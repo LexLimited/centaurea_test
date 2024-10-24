@@ -22,7 +22,7 @@ builder.Services
 
 builder.Services.AddLogging();
 builder.Services.AddResponseCompression();
-builder.Services.AddDbContext<AppDbContext>(options =>{
+builder.Services.AddDbContext<ApplicationDbContext>(options =>{
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
