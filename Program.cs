@@ -1,5 +1,8 @@
 using System.Diagnostics;
-using centaurea_test.Middlewares;
+using CentaureaTest.Data;
+using CentaureaTest.Middlewares;
+
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +22,9 @@ builder.Services
 
 builder.Services.AddLogging();
 builder.Services.AddResponseCompression();
+builder.Services.AddDbContext<AppDbContext>(options =>{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 
 var app = builder.Build();
 

@@ -1,4 +1,4 @@
-namespace centaurea_test;
+namespace CentaureaTest;
 
 public class WeatherForecast
 {

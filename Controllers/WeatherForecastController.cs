@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace centaurea_test.Controllers;
+namespace CentaureaTest.Controllers;
 
 [ApiController]
 [Route("[controller]")]

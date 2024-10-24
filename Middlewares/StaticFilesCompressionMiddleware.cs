@@ -1,4 +1,4 @@
-namespace centaurea_test.Middlewares;
+namespace CentaureaTest.Middlewares;
 
 public class StaticFilesCompressionMiddleware
 {
