@@ -5,8 +5,11 @@ namespace CentaureaTest.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public DbSet<DataGridTable> Grids { get; set; }
-    public DbSet<DataGridSignature> GridSignatures { get; set; }
+    public DbSet<GridsTable> Grids { get; set; }
+    public DbSet<FieldsTable> Fields { get; set; }
+    public DbSet<ValuesTable> Values { get; set; }
+    public DbSet<SingleChoiceTable> SingleChoiceOptions { get; set; }
+    public DbSet<MultipleChoiceTable> MultipleChoiceOptions { get; set; }
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {}
 

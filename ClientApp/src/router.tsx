@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { HomeRoutes } from "./views/Home/routes";
 import { Layout } from "./views/Layout";
 import { SettingsRoutes } from "./views/Settings/routes";
+import { DataGridRoutes } from "./views/DataGrid/routes";
 
 export default createBrowserRouter([
     {
@@ -9,7 +10,8 @@ export default createBrowserRouter([
         element: <Layout />,
         children: [
             ...HomeRoutes,
-            ...SettingsRoutes
+            ...SettingsRoutes,
+            ...DataGridRoutes,
         ]
     }
 ], {

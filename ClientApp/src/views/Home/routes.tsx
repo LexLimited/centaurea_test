@@ -8,7 +8,7 @@ export const HomeRoutes = [
             {
                 index: true,
                 element: <Index />
-            }
+            },
         ]
-    }
+    },
 ] as RouteObject[]
