@@ -5,16 +5,29 @@ namespace CentaureaTest.Models
 {
 
     [Table(name: "values")]
-    public sealed class ValuesTable
+    public class ValuesTable
     {
         [Key]
         public int Id { get; set; }
         public int GridId { get; set; }
         public int FieldId { get; set; }
         public int RowId { get; set; }
-        public Decimal? NumericValue { get; set; }
-        public string? TextValue { get; set; }
-        public string[]? ArrayValue { get; set; }
+        public string Value { get; set; }
+    }
+
+    public sealed class NumericValuesTable : ValuesTable
+    {
+        public Decimal NumericValue { get; set; }
+    }
+
+    public sealed class StringValuesTable : ValuesTable
+    {
+        public string StringValue { get; set; }
+    }
+
+    public sealed class RegexValuesTable : ValuesTable
+    {
+        public string RegexValue { get; set; }
     }
 
 }

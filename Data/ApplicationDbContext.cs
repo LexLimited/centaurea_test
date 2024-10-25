@@ -25,4 +25,20 @@ public class ApplicationDbContext : DbContext
 
         base.OnConfiguring(options);
     }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        builder.Entity<ValuesTable>()
+            .HasDiscriminator<string>("Discriminator")
+            .HasValue<NumericValuesTable>("Numeric")
+            .HasValue<StringValuesTable>("String")
+            .HasValue<RegexValuesTable>("Regex");
+
+        builder.Entity<ValuesTable>()
+            .Property(e => e.Value)
+            .HasColumnName("Value")
+            .HasColumnType("jsonb");
+
+        base.OnModelCreating(builder);
+    }
 }

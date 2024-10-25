@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CentaureaTest.Models
 {
 
@@ -11,14 +13,19 @@ namespace CentaureaTest.Models
         }
     }
 
-    public class DataGridNumber : DataGridValue
+    public class DataGridNumeric : DataGridValue
     {
-        public DataGridNumber(Decimal value) : base(value) {}
+        public DataGridNumeric(Decimal value) : base(value) {}
     }
 
     public class DataGridString : DataGridValue
     {
         public DataGridString(string value) : base(value) {}
+    }
+
+    public class DataGridRegex : DataGridValue
+    {
+        public DataGridRegex(string value) : base(value) {}
     }
 
 }
