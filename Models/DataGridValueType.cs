@@ -7,6 +7,7 @@ namespace CentaureaTest.Models
         Numeric,
         Email,
         Regex,
+        Ref,
         SingleSelect,
         MultiSelect,
     }

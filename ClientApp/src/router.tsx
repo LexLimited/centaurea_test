@@ -9,9 +9,9 @@ export default createBrowserRouter([
         path: "/",
         element: <Layout />,
         children: [
+            ...DataGridRoutes,
             ...HomeRoutes,
             ...SettingsRoutes,
-            ...DataGridRoutes,
         ]
     }
 ], {

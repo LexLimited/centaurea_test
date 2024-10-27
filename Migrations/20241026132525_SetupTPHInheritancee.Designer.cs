@@ -3,6 +3,7 @@ using System;
 using CentaureaTest.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace centaureatest.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241026132525_SetupTPHInheritancee")]
+    partial class SetupTPHInheritancee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -133,6 +136,10 @@ namespace centaureatest.Migrations
                     b.Property<int>("RowId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ValueType")
                         .IsRequired()
                         .HasColumnType("text");
@@ -141,21 +148,21 @@ namespace centaureatest.Migrations
 
                     b.ToTable("values");
 
-                    b.HasDiscriminator<string>("ValueType").HasValue("Base");
+                    b.HasDiscriminator<string>("ValueType").HasValue("ValuesTable");
 
                     b.UseTphMappingStrategy();
                 });
 
-            modelBuilder.Entity("CentaureaTest.Models.MultiSelectFieldsTable", b =>
+            modelBuilder.Entity("CentaureaTest.Models.OptionsFieldsTable", b =>
                 {
                     b.HasBaseType("CentaureaTest.Models.FieldsTable");
 
-                    b.Property<int?>("OptionTableId")
+                    b.Property<int?>("OptionSetId")
                         .HasColumnType("integer");
 
                     b.ToTable("fields");
 
-                    b.HasDiscriminator().HasValue("MultiSelect");
+                    b.HasDiscriminator().HasValue("Options");
                 });
 
             modelBuilder.Entity("CentaureaTest.Models.RefFieldsTable", b =>
@@ -174,28 +181,12 @@ namespace centaureatest.Migrations
                 {
                     b.HasBaseType("CentaureaTest.Models.FieldsTable");
 
-                    b.Property<string>("RegexPattern")
+                    b.Property<string>("Regex")
                         .HasColumnType("text");
 
                     b.ToTable("fields");
 
                     b.HasDiscriminator().HasValue("Regex");
-                });
-
-            modelBuilder.Entity("CentaureaTest.Models.SingleSelectFieldsTable", b =>
-                {
-                    b.HasBaseType("CentaureaTest.Models.FieldsTable");
-
-                    b.Property<int?>("OptionTableId")
-                        .HasColumnType("integer");
-
-                    b.ToTable("fields", t =>
-                        {
-                            t.Property("OptionTableId")
-                                .HasColumnName("SingleSelectFieldsTable_OptionTableId");
-                        });
-
-                    b.HasDiscriminator().HasValue("SingleSelect");
                 });
 
             modelBuilder.Entity("CentaureaTest.Models.NumericValuesTable", b =>

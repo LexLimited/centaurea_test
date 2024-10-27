@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Npgsql.Replication;
 
 namespace CentaureaTest.Models
 {
@@ -9,6 +8,7 @@ namespace CentaureaTest.Models
     public sealed class GridsTable
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string Name { get; set; }
 

@@ -12,7 +12,6 @@ namespace CentaureaTest.Models
         public int GridId { get; set; }
         public int FieldId { get; set; }
         public int RowId { get; set; }
-        public string Value { get; set; }
     }
 
     public sealed class NumericValuesTable : ValuesTable

@@ -28,16 +28,20 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        builder.Entity<FieldsTable>()
+            .HasDiscriminator<string>("FieldType")
+            .HasValue<FieldsTable>("Base")
+            .HasValue<RegexFieldsTable>("Regex")
+            .HasValue<RefFieldsTable>("Ref")
+            .HasValue<SingleSelectFieldsTable>("SingleSelect")
+            .HasValue<MultiSelectFieldsTable>("MultiSelect");
+
         builder.Entity<ValuesTable>()
-            .HasDiscriminator<string>("Discriminator")
+            .HasDiscriminator<string>("ValueType")
+            .HasValue<ValuesTable>("Base")
             .HasValue<NumericValuesTable>("Numeric")
             .HasValue<StringValuesTable>("String")
             .HasValue<RegexValuesTable>("Regex");
-
-        builder.Entity<ValuesTable>()
-            .Property(e => e.Value)
-            .HasColumnName("Value")
-            .HasColumnType("jsonb");
 
         base.OnModelCreating(builder);
     }
