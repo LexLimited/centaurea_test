@@ -10,27 +10,21 @@ namespace CentaureaTest.Models.Dto
     /// </summary>
     public sealed class DataGridValueDto
     {
-        public int FieldId { get; set; }
         public DataGridValueType Type { get; set; }
         public string? StringValue { get; set; }
         public decimal? DecimalValue { get; set; }
-        public string? RegexValue { get; set; }
-        public int? ReferencedFieldId { get; set; }
-        public int? OptionId { get; set; }
-        public List<int>? OptionIds { get; set; }
+        public int? IntValue { get; set; }
+        public List<int>? IntListValue { get; set; }
 
         public override string ToString()
         {
             var builder = new StringBuilder();
             
-            builder.AppendLine($"\tFieldId: {FieldId}");
             builder.AppendLine($"\tType: {Type}");
             builder.AppendLine($"\tStringValue: {StringValue}");
             builder.AppendLine($"\tDecimalValue: {DecimalValue}");
-            builder.AppendLine($"\tRegexValue: {RegexValue}");
-            builder.AppendLine($"\tReferenceFieldId: {ReferencedFieldId}");
-            builder.AppendLine($"\tOptionId: {OptionId}");
-            builder.AppendLine($"\tOptionIds: {OptionIds}");
+            builder.AppendLine($"\tIntValue: {IntValue}");
+            builder.AppendLine($"\tIntListValue: {IntListValue}");
 
             return builder.ToString();
         }
@@ -48,19 +42,22 @@ namespace CentaureaTest.Models.Dto
                 DataGridValueType.Numeric => new DataGridNumericValue(
                     valueDto.DecimalValue ?? throw new Exception("'DecimalValue' field expected for type 'Numeric'")
                 ),
+                DataGridValueType.Email => new DataGridEmailValue(
+                    valueDto.StringValue ?? throw new Exception("'StringValue' field expected for type 'Email'")
+                ),
                 DataGridValueType.Regex => new DataGridRegexValue(
-                    valueDto.RegexValue ?? throw new Exception("'RegexValue' field expected for type 'Regex'")
+                    valueDto.StringValue ?? throw new Exception("'StringValue' field expected for type 'Regex'")
                 ),
                 DataGridValueType.Ref => new DataGridRefValue(
-                    valueDto.ReferencedFieldId ?? throw new Exception("'RefencedFieldId' field expected for type 'Ref'")
+                    valueDto.IntValue ?? throw new Exception("'IntValue' field expected for type 'Ref'")
                 ),
                 DataGridValueType.SingleSelect => new DataGridSingleSelectValue(
-                    valueDto.OptionId ?? throw new Exception("'OptionId' field expected for type 'SingleSelect'")
+                    valueDto.IntValue ?? throw new Exception("'IntValue' field expected for type 'SingleSelect'")
                 ),
                 DataGridValueType.MultiSelect => new DataGridMultiSelectValue(
-                    valueDto.OptionIds ?? throw new Exception("'OptionIds' field expected for type 'MultiSelect'")
+                    valueDto.IntListValue ?? throw new Exception("'IntListValue' field expected for type 'MultiSelect'")
                 ),
-                _ => throw new Exception($"ToDataGridValue unhandled type {valueDto.Type}"),
+                _ => throw new NotImplementedException($"ToDataGridValue doesn't handle type {valueDto.Type}"),
             };
         }
 

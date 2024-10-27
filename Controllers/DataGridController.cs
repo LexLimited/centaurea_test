@@ -324,7 +324,8 @@ namespace CentaureaTest.Controllers
                 _logger.LogError(e, "While inserting a row");
                 return Problem("Failed to insert a row");
             }
-
+            await transaction.CommitAsync();
+            
             return Ok(values);
         }
     }

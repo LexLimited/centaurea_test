@@ -37,6 +37,7 @@ namespace CentaureaTest.Models
         public DataGridNumericValue(Decimal value)
         {
             Value = value;
+            Type = DataGridValueType.Numeric;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
@@ -52,6 +53,7 @@ namespace CentaureaTest.Models
         public DataGridStringValue(string value)
         {
             Value = value;
+            Type = DataGridValueType.String;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
@@ -76,6 +78,7 @@ namespace CentaureaTest.Models
             }
             
             Value = value;
+            Type = DataGridValueType.Email;
         }
 
         /// <summary>
@@ -118,6 +121,7 @@ namespace CentaureaTest.Models
         public DataGridRegexValue(string value)
         {
             Value = value;
+            Type = DataGridValueType.Regex;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
@@ -137,7 +141,7 @@ namespace CentaureaTest.Models
                 else
                 {
                     var ok = Regex.IsMatch(Value, regexSignature.RegexPattern);
-                    return (ok, ok ? string.Empty : "Regex value does not satisfy the regex");
+                    return (ok, ok ? string.Empty : $"Regex value does not satisfy the regex ({regexSignature.RegexPattern})");
                 }
             }
         }
@@ -150,6 +154,7 @@ namespace CentaureaTest.Models
         public DataGridRefValue(int referencedFieldId)
         {
             ReferencedFieldId = referencedFieldId;
+            Type = DataGridValueType.Ref;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
@@ -171,6 +176,7 @@ namespace CentaureaTest.Models
         public DataGridSingleSelectValue(int optionId)
         {
             OptionId = optionId;
+            Type = DataGridValueType.SingleSelect;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
@@ -192,6 +198,7 @@ namespace CentaureaTest.Models
         public DataGridMultiSelectValue(List<int> optionIds)
         {
             OptionIds = optionIds;
+            Type = DataGridValueType.MultiSelect;
         }
 
         public override (bool ok, string error) Validate(DataGridFieldSignature signature)
