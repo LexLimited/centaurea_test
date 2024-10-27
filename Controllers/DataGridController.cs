@@ -35,9 +35,9 @@ namespace CentaureaTest.Controllers
         /// </summary>
         // [Authorize]
         [HttpGet("grid")]
-        public IActionResult GetGridById([FromQuery] int gridId)
+        public async Task<IActionResult> GetGridById([FromQuery] int gridId)
         {
-            var grid = _dbContext.GetDataGrid(gridId);
+            var grid = await _dbContext.GetDataGridAsync(gridId);
             
             if (grid is null)
             {
@@ -123,6 +123,7 @@ namespace CentaureaTest.Controllers
                 // TODO! Delete values first
 
                 // Delete columns first
+
                 var fields = _dbContext.Fields
                     .Where(field => field.GridId == gridId)
                     .ToList();
@@ -239,23 +240,93 @@ namespace CentaureaTest.Controllers
             return Ok(fields.Select(field => field.Id));
         }
 
-        /*
         /// <summary>
         /// Adds a new row to the grid
         /// </summary>
         [HttpPost("row/{gridId}")]
-        public async Task<IActionResult> AddRow(int gridId)
+        public async Task<IActionResult> AddRow(int gridId, [FromBody] List<DataGridValueDto> valueDtos)
         {
+            _logger.LogInformation("Received the following value DTOs:");
+            foreach (var valueDto in valueDtos)
+            {
+                _logger.LogInformation("Value DTO: \n{}", valueDto);
+            }
+
             var grid = await _dbContext.Grids.FindAsync(gridId);
             if (grid is null)
             {
                 return NotFound($"Grid {gridId} does not exist");
             }
 
-            var fields = _dbContext.Fields.Where(field => field.GridId == gridId);
-            // _dbContext.Values.AddAsync()
+            var gridFields = _dbContext.GetGridFields(gridId).ToList();
+            var signature = gridFields.ToDataGridSignature();
+
+            if (!gridFields.Any())
+            {
+                return Problem($"Grid {gridId} doesn't have any fields");
+            }
+
+            if (signature.Fields.Count != valueDtos.Count)
+            {
+                return BadRequest("Number of values does not match the signature");
+            }
+
+            var values = valueDtos.ToDataGridValues().ToList();
+            
+            // Validate the values against the signature
+            var (areValuesValid, message) = signature.ValidateValues(values);
+            if (!areValuesValid)
+            {
+                return BadRequest(message);
+            }
+
+            if (values.Count == 0)
+            {
+                return Problem("Values are valid, but the number of values is 0");
+            }
+
+            // Assign field ids to the values
+            for (int i = 0; i < values.Count; ++i)
+            {
+                values[i].FieldId = gridFields[i].Id;
+            }
+
+            // Calculate the index for the new row            
+            // Find all the values corresponding to some column
+
+            var sampleFieldId = values[0].FieldId;
+
+            var fieldValues = _dbContext.Values
+                .Where(value => value.FieldId == sampleFieldId)
+                .Select(value => value.RowIndex);
+
+            // If the column contains no values, default to 0, otherwise increment
+            var newRowIndex = fieldValues.Any() ? fieldValues.Max() + 1 : 0;
+
+            // Set the index and write the values
+            foreach (var value in values)
+            {
+                value.RowIndex = newRowIndex;
+            }
+
+            using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                _dbContext.AddRange(values);
+                if (await _dbContext.SaveChangesAsync() != values.Count)
+                {
+                    throw new Exception("Not all values were inserted");
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "While inserting a row");
+                return Problem("Failed to insert a row");
+            }
+
+            return Ok(values);
         }
-        */
     }
 
 }

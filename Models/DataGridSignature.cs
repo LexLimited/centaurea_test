@@ -5,6 +5,7 @@ namespace CentaureaTest.Models
 
     public class DataGridFieldSignature
     {
+        public int Id { get; set; }
         public string Name { get; set; }
         public DataGridValueType Type { get; set; }
 
@@ -88,6 +89,48 @@ namespace CentaureaTest.Models
         {
             Fields = fields.Select(field => new DataGridFieldSignature(field.Name, field.Type))
             .ToList();
+        }
+
+        public (bool ok, string error) ValidateValues(List<DataGridValue> valuesEnumerable)
+        {
+            // NB! Probably worth optimizing, maybe not
+            var values = valuesEnumerable.ToList();
+
+            if (values.Count != Fields.Count)
+            {
+                return (false, "Number of values does not match the signature");
+            }
+
+            for (int i = 0; i < values.Count; ++i)
+            {
+                var (ok, message) = values[i].Validate(Fields[i]);
+                if (!ok)
+                {
+                    return (false, message);
+                }
+            }
+
+            return (true, string.Empty);
+        }
+    }
+
+    public static class DataGridSignatureExtension
+    {
+        public static DataGridFieldSignature ToDataGridFieldSignature(this FieldsTable fieldsTable)
+        {
+            return fieldsTable.Type switch
+                {
+                    DataGridValueType.Regex => new DataGridRegexFieldSignature(fieldsTable.Name, ((RegexFieldsTable)fieldsTable)?.RegexPattern ?? throw new Exception("Bad regex field")),
+                    DataGridValueType.Ref => new DataGridRefFieldSignature(fieldsTable.Name, ((RefFieldsTable)fieldsTable)?.ReferencedGridId ?? throw new Exception("Bad ref field")),
+                    DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(fieldsTable.Name, ((SingleSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad single select field")),
+                    DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(fieldsTable.Name, ((MultiSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad multi select field")),
+                    _ => new DataGridFieldSignature(fieldsTable.Name, fieldsTable.Type) // Default for basic fields
+                };
+        }
+
+        public static DataGridSignature ToDataGridSignature(this IEnumerable<FieldsTable> fieldsTableEnumerable)
+        {
+            return new DataGridSignature(fieldsTableEnumerable.Select(ToDataGridFieldSignature));
         }
     }
 
