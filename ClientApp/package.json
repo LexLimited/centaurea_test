@@ -22,7 +22,9 @@
     "vite": "^4.4.3"
   },
   "dependencies": {
+    "@emotion/styled": "^11.13.0",
     "@mui/material": "^6.1.5",
+    "@mui/styled-engine": "^6.1.5",
     "@mui/x-data-grid": "^7.21.0",
     "axios": "^1.7.7"
   }
