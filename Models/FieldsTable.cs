@@ -30,16 +30,6 @@ namespace CentaureaTest.Models
         public int? ReferencedGridId { get; set; }
     }
 
-    public sealed class MultiSelectFieldsTable : FieldsTable
-    {
-        public int? OptionTableId { get; set; }
-    }
-
-    public sealed class SingleSelectFieldsTable : FieldsTable
-    {
-        public int? OptionTableId { get; set; }
-    }
-
     public static class FieldsTableExtension
     {
         public static FieldsTable ToFieldsTable(this DataGridFieldSignature fieldSignature, int gridId)
@@ -60,22 +50,6 @@ namespace CentaureaTest.Models
                     Type = sig.Type,
                     GridId = gridId,
                     ReferencedGridId = sig.ReferencedGridId,
-                    Order = sig.Order,
-                },
-                DataGridSingleSelectFieldSignature sig => new SingleSelectFieldsTable
-                {
-                    Name = sig.Name,
-                    Type = sig.Type,
-                    GridId = gridId,
-                    OptionTableId = sig.OptionTableId,
-                    Order = sig.Order,
-                },
-                DataGridMultiSelectFieldSignature sig => new MultiSelectFieldsTable
-                {
-                    Name = sig.Name,
-                    Type = sig.Type,
-                    GridId = gridId,
-                    OptionTableId = sig.OptionTableId,
                     Order = sig.Order,
                 },
                 _ => new FieldsTable

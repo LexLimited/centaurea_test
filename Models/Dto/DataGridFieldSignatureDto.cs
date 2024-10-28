@@ -13,6 +13,9 @@ namespace CentaureaTest.Models.Dto
     /// polymorphic objects.
     /// Not used internally, only used to receive jsons.
     /// </summary>
+    /// <remarks>
+    /// NB! This one is a particularly nasty class, which must be refactored
+    /// </remarks>
     public sealed class DataGridFieldSignatureDto
     {
         public string Name { get; set; }
@@ -22,23 +25,11 @@ namespace CentaureaTest.Models.Dto
         public int Order { get; set; }
         public string? RegexPattern { get; set; }
         public int? ReferencedGridId { get; set;  }
-        public int? OptionTableId { get; set; }
+        public List<string>? Options { get; set; }
 
         private DataGridFieldSignatureDtoMissingPropertyException NewMissingPropertyExeption(string missingPropertyName)
         {
             return new DataGridFieldSignatureDtoMissingPropertyException(this, missingPropertyName);
-        }
-
-        public void Validate()
-        {
-            switch (Type)
-            {
-                case DataGridValueType.Regex: throw NewMissingPropertyExeption("RegexPattern");
-                case DataGridValueType.Ref: throw NewMissingPropertyExeption("RefencedGridId");
-                case DataGridValueType.SingleSelect: throw NewMissingPropertyExeption("OptionTableId");
-                case DataGridValueType.MultiSelect: throw NewMissingPropertyExeption("OptionTableId");
-                default: break;
-            };
         }
 
         public DataGridFieldSignature ToDataGridFieldSignature()
@@ -50,12 +41,6 @@ namespace CentaureaTest.Models.Dto
                 ),
                 DataGridValueType.Ref => new DataGridRefFieldSignature(
                     Name, ReferencedGridId ?? throw NewMissingPropertyExeption("ReferencedGridId"), Order
-                ),
-                DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(
-                    Name, OptionTableId ?? throw NewMissingPropertyExeption("OptionTableId"), Order
-                ),
-                DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(
-                    Name, OptionTableId ?? throw NewMissingPropertyExeption("OptionTableId"), Order
                 ),
                 _ => new DataGridFieldSignature(Name, Type, Order),
             };

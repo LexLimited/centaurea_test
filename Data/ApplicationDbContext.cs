@@ -8,10 +8,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<GridsTable> Grids { get; set; }
     public DbSet<FieldsTable> Fields { get; set; }
     public DbSet<DataGridValue> Values { get; set; }
-    public DbSet<SingleChoiceTable> SingleChoiceOptions { get; set; }
-    public DbSet<MultipleChoiceTable> MultipleChoiceOptions { get; set; }
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-    {}
+    public DbSet<SingleSelectTable> SingleSelectOptions { get; set; }
+    public DbSet<MultiSelectTable> MultiSelectOptions { get; set; }
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) {}
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -32,9 +32,7 @@ public class ApplicationDbContext : DbContext
             .HasDiscriminator<string>("FieldType")
             .HasValue<FieldsTable>("Base")
             .HasValue<RegexFieldsTable>("Regex")
-            .HasValue<RefFieldsTable>("Ref")
-            .HasValue<SingleSelectFieldsTable>("SingleSelect")
-            .HasValue<MultiSelectFieldsTable>("MultiSelect");
+            .HasValue<RefFieldsTable>("Ref");
 
         builder.Entity<DataGridValue>()
             .HasDiscriminator<string>("ValueType")
@@ -48,4 +46,5 @@ public class ApplicationDbContext : DbContext
 
         base.OnModelCreating(builder);
     }
+
 }

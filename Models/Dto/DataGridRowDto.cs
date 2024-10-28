@@ -33,9 +33,14 @@ namespace CentaureaTest.Models.Dto
             return builder.ToString();
         }
 
+        public IEnumerable<DataGridValue> ToDataGridValues()
+        {
+            return Items.Select(valueDto => valueDto.ToDataGridValue());
+        }
+
         public DataGridRow ToDataGridRow()
         {
-            return new DataGridRow(Items.Select(valueDto => valueDto.ToDataGridValue()));
+            return new DataGridRow(ToDataGridValues());
         }
     }
 

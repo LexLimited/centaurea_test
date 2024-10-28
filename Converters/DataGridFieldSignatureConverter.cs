@@ -48,16 +48,6 @@ namespace CentaureaTest.Converters
                     writer.WriteNumberValue(refField.ReferencedGridId);
                     break;
 
-                case DataGridSingleSelectFieldSignature singleSelectField:
-                    writer.WritePropertyName("optionTableId");
-                    writer.WriteNumberValue(singleSelectField.OptionTableId);
-                    break;
-
-                case DataGridMultiSelectFieldSignature multiSelectField:
-                    writer.WritePropertyName("optionTableId");
-                    writer.WriteNumberValue(multiSelectField.OptionTableId);
-                    break;
-
                 default: break;
             }
 

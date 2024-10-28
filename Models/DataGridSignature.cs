@@ -55,26 +55,6 @@ namespace CentaureaTest.Models
         }
     }
 
-    public sealed class DataGridSingleSelectFieldSignature : DataGridFieldSignature
-    {
-        public int OptionTableId { get; set; }
-
-        public DataGridSingleSelectFieldSignature(string name, int optionTableId, int order) : base(name, DataGridValueType.SingleSelect, order)
-        {
-            OptionTableId = optionTableId;
-        }
-    }
-
-    public sealed class DataGridMultiSelectFieldSignature : DataGridFieldSignature
-    {
-        public int OptionTableId { get; set; }
-
-        public DataGridMultiSelectFieldSignature(string name, int optionTableId, int order) : base(name, DataGridValueType.MultiSelect, order)
-        {
-            OptionTableId = optionTableId;
-        }
-    }
-
     public sealed class DataGridSignature
     {
         public List<DataGridFieldSignature> Fields { get; set; }
@@ -94,6 +74,10 @@ namespace CentaureaTest.Models
             Fields = fields.Select(field => new DataGridFieldSignature(field.Name, field.Type, field.Order)).ToList();
         }
 
+        /// <summary>
+        /// Validates that values satisfy the constraints specify in the signature
+        /// </summary>
+        /// <remarks>Single and multi select values are not validated</remarks>
         public (bool ok, string error) ValidateValues(IEnumerable<DataGridValue> valuesEnumerable)
         {
             // NB! Probably worth optimizing, maybe not
@@ -131,16 +115,6 @@ namespace CentaureaTest.Models
                     DataGridValueType.Ref => new DataGridRefFieldSignature(
                         fieldsTable.Name,
                         ((RefFieldsTable)fieldsTable)?.ReferencedGridId ?? throw new Exception("Bad ref field"),
-                        fieldsTable.Order
-                    ),
-                    DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(
-                        fieldsTable.Name,
-                        ((SingleSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad SingleSelect field"),
-                        fieldsTable.Order
-                    ),
-                    DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(
-                        fieldsTable.Name,
-                        ((MultiSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad MultiSelect field"),
                         fieldsTable.Order
                     ),
                     _ => new DataGridFieldSignature(fieldsTable.Name, fieldsTable.Type, fieldsTable.Order)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CentaureaTest.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace centaureatest.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241028081559_RenameMultipleChoiceTable")]
+    partial class RenameMultipleChoiceTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -101,7 +104,7 @@ namespace centaureatest.Migrations
                     b.ToTable("grids");
                 });
 
-            modelBuilder.Entity("CentaureaTest.Models.MultiSelectTable", b =>
+            modelBuilder.Entity("CentaureaTest.Models.MultiChoiceTable", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -121,10 +124,10 @@ namespace centaureatest.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("multi_select");
+                    b.ToTable("multiple_choice");
                 });
 
-            modelBuilder.Entity("CentaureaTest.Models.SingleSelectTable", b =>
+            modelBuilder.Entity("CentaureaTest.Models.SingleChoiceTable", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -139,9 +142,12 @@ namespace centaureatest.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("TableId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.ToTable("single_select");
+                    b.ToTable("single_choice");
                 });
 
             modelBuilder.Entity("CentaureaTest.Models.DataGridMultiSelectValue", b =>
@@ -227,6 +233,18 @@ namespace centaureatest.Migrations
                     b.HasDiscriminator().HasValue("String");
                 });
 
+            modelBuilder.Entity("CentaureaTest.Models.MultiSelectFieldsTable", b =>
+                {
+                    b.HasBaseType("CentaureaTest.Models.FieldsTable");
+
+                    b.Property<int?>("OptionTableId")
+                        .HasColumnType("integer");
+
+                    b.ToTable("fields");
+
+                    b.HasDiscriminator().HasValue("MultiSelect");
+                });
+
             modelBuilder.Entity("CentaureaTest.Models.RefFieldsTable", b =>
                 {
                     b.HasBaseType("CentaureaTest.Models.FieldsTable");
@@ -249,6 +267,22 @@ namespace centaureatest.Migrations
                     b.ToTable("fields");
 
                     b.HasDiscriminator().HasValue("Regex");
+                });
+
+            modelBuilder.Entity("CentaureaTest.Models.SingleSelectFieldsTable", b =>
+                {
+                    b.HasBaseType("CentaureaTest.Models.FieldsTable");
+
+                    b.Property<int?>("OptionTableId")
+                        .HasColumnType("integer");
+
+                    b.ToTable("fields", t =>
+                        {
+                            t.Property("OptionTableId")
+                                .HasColumnName("SingleSelectFieldsTable_OptionTableId");
+                        });
+
+                    b.HasDiscriminator().HasValue("SingleSelect");
                 });
 #pragma warning restore 612, 618
         }

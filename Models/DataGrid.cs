@@ -84,16 +84,6 @@ namespace CentaureaTest.Models
                         ((RefFieldsTable)field)?.ReferencedGridId ?? throw new Exception("Bad ref field"),
                         field.Order
                     ),
-                    DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(
-                        field.Name,
-                        ((SingleSelectFieldsTable)field)?.OptionTableId ?? throw new Exception("Bad single select field"),
-                        field.Order
-                    ),
-                    DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(
-                        field.Name,
-                        ((MultiSelectFieldsTable)field)?.OptionTableId ?? throw new Exception("Bad multi select field"),
-                        field.Order
-                    ),
                     _ => new DataGridFieldSignature(field.Name, field.Type, field.Order) // Default for basic fields
                 };
 

@@ -1,15 +1,15 @@
+using CentaureaTest.Auth;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CentaureaTest.Controllers
 {
 
     [ApiController]
     [Route("api/datagrid")]
-    // [Authorize]
     public sealed class DataGridController : Controller
     {
         private readonly ApplicationDbContext _dbContext;
@@ -40,73 +40,19 @@ namespace CentaureaTest.Controllers
         }
         
         /// <summary>Creates a new grid</summary>
-        // [Authorize]
+        [Authorize(Roles = "Admin, SuperUser")]
         [HttpPost("grid")]
-        public async Task<IActionResult> CreateDataGrid([FromBody] DataGridDto gridDto)
+        public async Task<IActionResult> CreateGrid([FromBody] CreateDataGridDto gridDto)
         {
-            var grid = gridDto.ToDataGrid();
-            Console.WriteLine($"Will insert the following grid: {grid}");
-
-            if (!grid.Signature.Fields.GroupBy(field => field.Order).All(group => group.Count() == 1))
-            {
-                return BadRequest("Order must not repeat");
-            }
-
-            using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                // Insert into grids table
-                var gridsTable = grid.ToGridsTable();
-                await _dbContext.AddAsync(gridsTable);
-                var nAdded = await _dbContext.SaveChangesAsync();
-
-                if (nAdded == 0)
-                {
-                    throw new Exception("Failed to insert new grid");
-                }
-
-                if (grid.Signature.Fields.Any(field => field is null))
-                {
-                    throw new Exception("Grid signature contains a null field");
-                }
-
-                var createdGridId = gridsTable.Id;
-
-                // Insert into fields table
-                await _dbContext.Fields.AddRangeAsync(grid.Signature.Fields.ToFieldsTables(createdGridId));
-                nAdded = await _dbContext.SaveChangesAsync();
-
-                if (nAdded != grid.Signature.Fields.Count)
-                {
-                    throw new Exception("Not all fields were written");
-                }
-
-                // Insert into values table
-                foreach (var row in grid.Rows)
-                {
-                    try
-                    {
-                        await _dbContext.InsertRowAsync(createdGridId, row.Items);
-                    }
-                    catch (Exception e)
-                    {
-                        await transaction.RollbackAsync();
-                        return Problem(e.Message);
-                    }
-                }
-
-                // Both grids and fields tables are correctly inserted
-                await transaction.CommitAsync();
+                await _dbContext.CreateTablesFromDtoTransactionAsync(gridDto);
+                return Ok();
             }
             catch (Exception e)
             {
-                await transaction.RollbackAsync();
-                _logger.LogError(e, "While adding a grid");
-
-                return Problem("Failed to create a grid");
+                return Problem(e.Message);
             }
-
-            return Ok();
         }
 
         /// <summary>Deletes an existing grid</summary>

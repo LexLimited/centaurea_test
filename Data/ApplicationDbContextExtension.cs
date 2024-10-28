@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text.RegularExpressions;
 using CentaureaTest.Models;
@@ -75,6 +77,62 @@ namespace CentaureaTest.Data
             return new DataGrid(grid.Id, grid.Name, signature, rows);
         }
 
+        public static async Task DeleteSingleSelectTableAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            var options = dbContext.SingleSelectOptions
+                .Where(option => option.FieldId == fieldId)
+                .ToList();
+
+            dbContext.RemoveRange(options);
+            if (await dbContext.SaveChangesAsync() != options.Count)
+            {
+                throw new Exception($"Failed to delete some single select options for field {fieldId}");
+            }
+        }
+
+        public static async Task DeleteMultiSelectTableAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            var options = dbContext.MultiSelectOptions
+                .Where(option => option.FieldId == fieldId)
+                .ToList();
+
+            dbContext.RemoveRange(options);
+            if (await dbContext.SaveChangesAsync() != options.Count)
+            {
+                throw new Exception($"Failed to delete some multi select options for field {fieldId}");
+            }
+        }
+
+        /// <summary>
+        /// Deletes single/multi select options if the field has a corresponding type
+        /// </summary>
+        public static async Task TryDeleteSelectOptionsAsync(this ApplicationDbContext dbContext, FieldsTable field)
+        {
+            if (field.Type == DataGridValueType.SingleSelect)
+            {
+                await dbContext.DeleteSingleSelectTableAsync(field.Id);
+            }
+            else if (field.Type == DataGridValueType.MultiSelect)
+            {
+                await dbContext.DeleteMultiSelectTableAsync(field.Id);
+            }
+        }
+
+        /// <summary>
+        /// Iterates over field tables and deletes single/multi select options if the
+        /// field has a corresponding type
+        /// </summary>
+        public static async Task TryDeleteSelectOptionsAsync(this ApplicationDbContext dbContext, IEnumerable<FieldsTable> fields)
+        {
+            foreach (var field in fields)
+            {
+                await dbContext.TryDeleteSelectOptionsAsync(field);
+            }
+        }
+
+        // TODO! Consider if I need to retain both delete field and delete fields
+        // or should the delete fields simply call delete field and if not,
+        // could could I reduce the code duplication
         /// <summary>Deletes the field and dependent values</summary>
         /// <remarks>Not transactional</remarks>
         public static async Task DeleteFieldAsync(this ApplicationDbContext dbContext, int fieldId)
@@ -85,6 +143,10 @@ namespace CentaureaTest.Data
             var values = dbContext.Values
                 .Where(value => value.FieldId == fieldId)
                 .ToList();
+
+            // If single select or multi select, remove corresponding options
+            // TODO! Do something about this code duplication
+            await dbContext.TryDeleteSelectOptionsAsync(field);
 
             // Remove the dependent values
             dbContext.Values.RemoveRange(values);
@@ -120,6 +182,9 @@ namespace CentaureaTest.Data
             var values = dbContext.Values
                 .Where(value => fieldIds.Contains(value.FieldId))
                 .ToList();
+
+            // If the field is single or multi select, delete the corresponding choice tables
+            await dbContext.TryDeleteSelectOptionsAsync(fields);
 
             // Remove the dependent values
             dbContext.Values.RemoveRange(values);
@@ -195,7 +260,46 @@ namespace CentaureaTest.Data
             await dbContext.DeleteFieldsAsync(dependentFields);
         }
 
-        /// <remarks>I think is safe to use as is and not wrap into a transaction?</remarks>
+        /// <summary>
+        /// Validates all values including single and multi select
+        /// </summary>
+        /// <remarks>Throws if values are invalid</remarks>
+        public static async Task ValidateValues(this ApplicationDbContext dbContext, DataGridSignature signature, IEnumerable<DataGridValue> values)
+        {
+            /// Validate signature constraints
+            var (ok, message) = signature.ValidateValues(values);
+            if (!ok)
+            {
+                throw new Exception(message);
+            }
+
+            /// Validate single and multi select
+            var singleSelectValues = values.OfType<DataGridSingleSelectValue>();
+            foreach (var value in singleSelectValues)
+            {
+                if (await dbContext.SingleSelectOptions.FindAsync(value.OptionId) is null)
+                {
+                    throw new Exception($"Single select option {value.OptionId} does not exist");
+                }
+            }
+
+            var multiSelectValues = values.OfType<DataGridMultiSelectValue>();
+            foreach (var value in multiSelectValues)
+            {
+                var missingOptionIds = value.OptionIds
+                    .Where(optionId => !dbContext.MultiSelectOptions.Any(option => option.Id == optionId));
+
+                if (missingOptionIds.Any())
+                {
+                    throw new Exception("Some multi select options do not exist");
+                }
+            }
+        }
+
+        /// <remarks>
+        /// I think is safe to use as is and not wrap into a transaction?<br/>
+        /// Throws on failure
+        /// </remarks>
         public static async Task InsertRowAsync(this ApplicationDbContext dbContext, int gridId, IEnumerable<DataGridValue> valuesEnumerable)
         {
             // TODO! Consideration: maybe don't do this
@@ -218,11 +322,7 @@ namespace CentaureaTest.Data
             }
 
             // Validate the values against the signature
-            var (areValuesValid, message) = signature.ValidateValues(values);
-            if (!areValuesValid)
-            {
-                throw new Exception(message);
-            }
+            await dbContext.ValidateValues(signature, values);
 
             if (values.Count == 0)
             {
@@ -305,6 +405,131 @@ namespace CentaureaTest.Data
 
             throw new NotImplementedException("PutValue extension method on ApplicationDbContext is not implemented");
         }
+
+        /// <summary>Inserts options into single select table</summary>
+        /// <remarks>Throws on failure</remarks>
+        /// <returns>Ids of inserted options</returns>
+        public static async Task<IEnumerable<int>> CreateSingleSelectOptionsAsync(this ApplicationDbContext dbContext, int fieldId, IEnumerable<string> options)
+        {
+            var tables = options.Select(option => new SingleSelectTable(fieldId, option)).ToList();
+
+            await dbContext.SingleSelectOptions.AddRangeAsync(tables);
+            if (await dbContext.SaveChangesAsync() != tables.Count)
+            {
+                throw new Exception("Failed to insert some options into single select table");
+            }
+
+            return tables.Select(table => table.Id);
+        }
+
+        /// <summary>Inserts options into multi select table</summary>
+        /// <remarks>Throws on failure</remarks>
+        /// <returns>Ids of inserted options</returns>
+        public static async Task<IEnumerable<int>> CreateMultiSelectOptionsAsync(this ApplicationDbContext dbContext, int fieldId, IEnumerable<string> options)
+        {
+            var tables = options.Select(option => new MultiSelectTable(fieldId, option)).ToList();
+
+            await dbContext.MultiSelectOptions.AddRangeAsync(tables);
+            if (await dbContext.SaveChangesAsync() != tables.Count)
+            {
+                throw new Exception("Failed to insert some option into multi select table");
+            }
+
+            return tables.Select(table => table.Id);
+        }
+
+        /// <summary>Creates a new grids table entry from grid dto</summary>
+        /// <returns>Id of a newly created grid</returns>
+        public static async Task<int> CreateGridsTableFromDto(this ApplicationDbContext dbContext, CreateDataGridDto gridDto)
+        {
+            // Insert into grids table
+            var gridsTable = gridDto.ToGridsTable();
+            dbContext.Grids.Add(gridsTable);
+            await dbContext.SaveChangesAsync();
+            return gridsTable.Id;
+        }
+
+        /// <summary>Create single and multiselect tables from dto</summary>
+        /// <remarks>
+        /// Not transactional<br/>
+        /// Throws on error
+        /// </remarks>
+        public static async Task CreateSelectTablesFromDtoFields
+        (
+            this ApplicationDbContext dbContext,
+            IEnumerable<(int FieldId, CreateDataGridFieldSignatureDto FieldSignatureDto)> fieldSignatureDtos
+        )
+        {
+            var singleSelectFields = fieldSignatureDtos
+                .Where(field => field.FieldSignatureDto.Type == DataGridValueType.SingleSelect);
+
+            var multiSelectFields = fieldSignatureDtos
+                .Where(field => field.FieldSignatureDto.Type == DataGridValueType.MultiSelect);
+
+            foreach (var (fieldId, fieldSignatureDto) in singleSelectFields)
+            {
+                await dbContext.CreateSingleSelectOptionsAsync(
+                    fieldId, fieldSignatureDto.Options ?? throw new Exception("'Options' field is required for 'SingleSelect' dto")
+                );
+            }
+
+            foreach (var (fieldId, fieldSignatureDto) in multiSelectFields)
+            {
+                await dbContext.CreateMultiSelectOptionsAsync(
+                    fieldId, fieldSignatureDto.Options ?? throw new Exception("'Options' field is required for 'MultiSelect' dto")
+                );
+            }
+        }
+
+        /// <summary>Inserts grids, fields, options and values base on the dto</summary>
+        /// <remarks>Throws on failure</remarks>
+        public static async Task CreateTablesFromDtoTransactionAsync(this ApplicationDbContext dbContext, CreateDataGridDto gridDto)
+        {
+            var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Create grids table
+                var gridId = await dbContext.CreateGridsTableFromDto(gridDto);
+
+                // Insert all field tables in one operation
+                var fieldTables = gridDto.Signature.Fields.ToFieldsTables().ToList();
+                foreach (var fieldTable in fieldTables)
+                {
+                    fieldTable.GridId = gridId;
+                }
+
+                dbContext.AddRange(fieldTables);
+
+                // Save changes and get the generated field IDs
+                if (await dbContext.SaveChangesAsync() != fieldTables.Count)
+                {
+                    throw new Exception("Some fields were not inserted");
+                }
+
+                // Map field IDs to their corresponding DTOs
+                var fieldSignatureDtosWithIds = fieldTables
+                    .Select((fieldTable, index) => (fieldTable.Id, gridDto.Signature.Fields[index]))
+                    .ToList();
+
+                // Insert select tables now that the field IDs are known
+                await dbContext.CreateSelectTablesFromDtoFields(fieldSignatureDtosWithIds);
+
+                // Insert into values table
+                foreach (var row in gridDto.Rows)
+                {
+                    await dbContext.InsertRowAsync(gridId, row.ToDataGridValues());
+                }
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+
+            await transaction.CommitAsync();
+        }
+
     }
 
 }

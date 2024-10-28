@@ -4,14 +4,19 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CentaureaTest.Models
 {
 
-    [Table(name: "multiple_choice")]
-    public sealed class MultipleChoiceTable
+    [Table(name: "single_select")]
+    public sealed class SingleSelectTable
     {
         [Key]
         public int Id { get; set; }
-        public int TableId { get; set; }
         public int FieldId { get; set; }
         public string Option { get; set; }
+
+        public SingleSelectTable(int fieldId, string option)
+        {
+            FieldId = fieldId;
+            Option = option;
+        }
     }
 
 }

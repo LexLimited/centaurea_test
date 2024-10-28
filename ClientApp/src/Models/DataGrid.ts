@@ -8,7 +8,7 @@ export namespace Models {
             type: DataGridValueType,
             regexPattern?: string,
             referencedGridId?: number,
-            optionTableId?: number,
+            optionId?: number,
         };
 
         export type DataGridSignatureDto = {

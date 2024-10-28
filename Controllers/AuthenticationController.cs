@@ -1,27 +1,33 @@
-using System.Net.Quic;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace CentaureaTest.Models
 {
 
     [ApiController]
-    [Route("[controller]")]
+    [Route("auth")]
     [Authorize]
-    public sealed class AccountController : Controller
+    public sealed class AuthenticationController : Controller
     {
-        [HttpGet("login")]
-        public IActionResult Login()
+        [HttpGet("signup")]
+        public IActionResult SignUp([FromBody] string? returnUrl)
         {
-            return View();
+            return BadRequest("Every request is bad");
+        }
+
+        [HttpGet("login")]
+        public async Task<IActionResult> LogIn([FromBody] string? returnUrl)
+        {
+            await Task.Delay(500);
+            return BadRequest("Every request is bad");
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(string username, string password)
+        public async Task<IActionResult> LogIn(string username, string password, [FromQuery] string? returnUrl)
         {
+            // TODO! Very strange and clearly malfunctioning pice of code
             if (username == "admin" && password == "admin")
             {
                 var claims = new List<Claim>()
@@ -35,7 +41,7 @@ namespace CentaureaTest.Models
                 await HttpContext.SignInAsync("CookieAuth", new ClaimsPrincipal(claimsIdentity));
             }
 
-            return RedirectToAction("Index", "Home");
+            return BadRequest("Every request is bad");
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
+using CentaureaTest.Auth;
 using CentaureaTest.Converters;
 using CentaureaTest.Data;
 using CentaureaTest.Middlewares;
@@ -31,8 +32,18 @@ builder.Services
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 builder.Services
-    .AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<AuthDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+    {
+       options.Cookie.HttpOnly = true; 
+       options.ExpireTimeSpan = TimeSpan.FromDays(7);
+       options.LoginPath = "/auth/login";
+       options.AccessDeniedPath = "/auth/register";
+       options.SlidingExpiration = true;
+    });
 
 builder.Services.AddAuthentication("CookieAuth")
     .AddCookie("CookieAuth", options =>
@@ -43,8 +54,14 @@ builder.Services.AddAuthentication("CookieAuth")
 
 builder.Services.AddLogging();
 builder.Services.AddResponseCompression();
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>{
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
+
+builder.Services.AddDbContext<AuthDbContext>(options =>
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("AuthConnection"));
 });
 
 var app = builder.Build();
@@ -60,6 +77,13 @@ using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.Migrate();
+}
+
+// Seed the roles and the superuser
+using (var scope = app.Services.CreateScope())
+{
+    var serviceProvider = scope.ServiceProvider;
+    await AuthDbContext.SeedRoleAndSuperuser(serviceProvider);
 }
 
 app.UseHttpsRedirection();
