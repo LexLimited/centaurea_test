@@ -12,14 +12,16 @@ namespace CentaureaTest.Models.Dto
 
         public DataGridSignatureDto Signature { get; set; }
 
-        public List<DataGridRow> Rows { get; set; }
+        public List<DataGridRowDto> Rows { get; set; }
 
         public DataGrid ToDataGrid()
         {
-            var ret = new DataGrid();
-            ret.Name = Name;
-            ret.Signature = Signature.ToDataGridSignature();
-            ret.Rows = Rows;
+            var ret = new DataGrid
+            {
+                Name = Name,
+                Signature = Signature.ToDataGridSignature(),
+                Rows = Rows.ToDataGridRow().ToList()
+            };
             return ret;
         }
     }

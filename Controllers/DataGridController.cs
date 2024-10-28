@@ -21,47 +21,36 @@ namespace CentaureaTest.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Dummy page for memes
-        /// </summary>
+        /// <summary>Dummy page for memes</summary>
         [HttpGet]
         public IActionResult Index()
         {
             return Ok(_dbContext.Grids);
         }
 
-        /// <summary>
-        /// Returns an existing grid
-        /// </summary>
+        /// <summary>Returns an existing grid</summary>
         // [Authorize]
         [HttpGet("grid")]
         public async Task<IActionResult> GetGridById([FromQuery] int gridId)
         {
             var grid = await _dbContext.GetDataGridAsync(gridId);
             
-            if (grid is null)
-            {
-                return new NotFoundResult();
-            }
-
-            _logger.LogInformation("Got the following fields:");
-            foreach (var field in grid.Signature.Fields)
-            {
-                _logger.LogInformation("Field: {}", field);
-            }
-
-            return Ok(grid);
+            return grid is null
+                ? new NotFoundResult() : Ok(grid);
         }
         
-        /// <summary>
-        /// Creates a new grid
-        /// </summary>
+        /// <summary>Creates a new grid</summary>
         // [Authorize]
         [HttpPost("grid")]
         public async Task<IActionResult> CreateDataGrid([FromBody] DataGridDto gridDto)
         {
             var grid = gridDto.ToDataGrid();
             Console.WriteLine($"Will insert the following grid: {grid}");
+
+            if (!grid.Signature.Fields.GroupBy(field => field.Order).All(group => group.Count() == 1))
+            {
+                return BadRequest("Order must not repeat");
+            }
 
             using var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
@@ -81,13 +70,29 @@ namespace CentaureaTest.Controllers
                     throw new Exception("Grid signature contains a null field");
                 }
 
+                var createdGridId = gridsTable.Id;
+
                 // Insert into fields table
-                await _dbContext.Fields.AddRangeAsync(grid.Signature.Fields.ToFieldsTables(gridsTable.Id));
+                await _dbContext.Fields.AddRangeAsync(grid.Signature.Fields.ToFieldsTables(createdGridId));
                 nAdded = await _dbContext.SaveChangesAsync();
 
                 if (nAdded != grid.Signature.Fields.Count)
                 {
                     throw new Exception("Not all fields were written");
+                }
+
+                // Insert into values table
+                foreach (var row in grid.Rows)
+                {
+                    try
+                    {
+                        await _dbContext.InsertRowIntoGridAsync(createdGridId, row.Items);
+                    }
+                    catch (Exception e)
+                    {
+                        await transaction.RollbackAsync();
+                        return Problem(e.Message);
+                    }
                 }
 
                 // Both grids and fields tables are correctly inserted
@@ -104,71 +109,27 @@ namespace CentaureaTest.Controllers
             return Ok();
         }
 
-        /// <summary>
-        /// Deletes an existing grid
-        /// </summary>
+        /// <summary>Deletes an existing grid</summary>
         [HttpDelete("grid/{gridId}")]
         public async Task<IActionResult> DeleteGrid(int gridId)
         {
-            var grid = await _dbContext.Grids.FindAsync(gridId);
-            if (grid is null)
-            {
-                return NotFound($"Grid {gridId} does not exist");
-            }
-
-            var transaction = await _dbContext.Database.BeginTransactionAsync();
-
             try
             {
-                // TODO! Delete values first
-
-                // Delete columns first
-
-                var fields = _dbContext.Fields
-                    .Where(field => field.GridId == gridId)
-                    .ToList();
-
-                _dbContext.Fields.RemoveRange(fields);
-                var nDeleted = await _dbContext.SaveChangesAsync();
-
-                if (nDeleted != fields.Count)
-                {
-                    throw new Exception("Failed to delete some fields");
-                }
-
-                // TODO! Delete dependent columns
-
-                // Delete the grid after all delemndencies were deleted
-
-                _dbContext.Grids.Remove(grid);
-                nDeleted = await _dbContext.SaveChangesAsync();
-            
-                if (nDeleted != 1)
-                {
-                    throw new Exception("Failed to delete a grid");
-                }
+                await _dbContext.DeleteGridTransactionAsync(gridId);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "While deleting a grid");
-                await transaction.RollbackAsync();
-
-                return Problem();
+                return Problem(e.Message);
             }
-
-            await transaction.CommitAsync();
-
+            
             return Ok(gridId);
         }
 
-        /// <summary>
-        /// Adds a new column to an existing table
-        /// </summary>
+        /// <summary>Adds a new column to an existing table</summary>
         [HttpPost("{gridId}/field")]
         public async Task<IActionResult> AddField(int gridId, [FromBody] DataGridFieldSignatureDto fieldSignatureDto)
         {
             var fieldSignature = fieldSignatureDto.ToDataGridFieldSignature();
-
             if (fieldSignature is null)
             {
                 return BadRequest("Invalid field signature");
@@ -192,141 +153,63 @@ namespace CentaureaTest.Controllers
             return Ok(fieldsTable);
         }
 
-        /// <summary>
-        /// Deletes a field from a grid
-        /// </summary>
+        /// <summary>Deletes a field from a grid</summary>
         [HttpDelete("field/{fieldId}")]
         public async Task<IActionResult> DeleteField(int fieldId)
         {
-            var field = await _dbContext.Fields.FindAsync(fieldId);
-            if (field is null)
+            var transaction = await _dbContext.Database.BeginTransactionAsync();
+            try
             {
-                return NotFound($"Field {fieldId} does not exist");
+                await _dbContext.DeleteFieldAsync(fieldId);
             }
-
-            _dbContext.Fields.Remove(field);
-            await _dbContext.SaveChangesAsync();
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                return Problem(e.Message);
+            }
+            await transaction.CommitAsync();
 
             return Ok(fieldId);
         }
 
-        /// <summary>
-        /// Deletes a list of fields from a grid
-        /// </summary>
+        /// <summary>Deletes a list of fields from a grid</summary>
         [HttpDelete("fields")]
         public async Task<IActionResult> DeleteFields([FromBody] List<int> fieldIds)
         {
             if (fieldIds is null)
             {
-                return BadRequest("List if field ids is expected");
+                return BadRequest("Expected property 'fieldIds'");
             }
 
-            // Nothing to do
-            if (fieldIds.Count == 0)
-            {
-                return Ok();
-            }
-
-            var fields = await _dbContext.Fields.Where(field => fieldIds.Contains(field.Id)).ToListAsync();
-
-            if (fields.Count != fieldIds.Count)
-            {
-                return NotFound("Some fields weren't found");
-            }
-
-            _dbContext.Fields.RemoveRange(fields);
-            await _dbContext.SaveChangesAsync();
-
-            return Ok(fields.Select(field => field.Id));
-        }
-
-        /// <summary>
-        /// Adds a new row to the grid
-        /// </summary>
-        [HttpPost("row/{gridId}")]
-        public async Task<IActionResult> AddRow(int gridId, [FromBody] List<DataGridValueDto> valueDtos)
-        {
-            _logger.LogInformation("Received the following value DTOs:");
-            foreach (var valueDto in valueDtos)
-            {
-                _logger.LogInformation("Value DTO: \n{}", valueDto);
-            }
-
-            var grid = await _dbContext.Grids.FindAsync(gridId);
-            if (grid is null)
-            {
-                return NotFound($"Grid {gridId} does not exist");
-            }
-
-            var gridFields = _dbContext.GetGridFields(gridId).ToList();
-            var signature = gridFields.ToDataGridSignature();
-
-            if (!gridFields.Any())
-            {
-                return Problem($"Grid {gridId} doesn't have any fields");
-            }
-
-            if (signature.Fields.Count != valueDtos.Count)
-            {
-                return BadRequest("Number of values does not match the signature");
-            }
-
-            var values = valueDtos.ToDataGridValues().ToList();
-            
-            // Validate the values against the signature
-            var (areValuesValid, message) = signature.ValidateValues(values);
-            if (!areValuesValid)
-            {
-                return BadRequest(message);
-            }
-
-            if (values.Count == 0)
-            {
-                return Problem("Values are valid, but the number of values is 0");
-            }
-
-            // Assign field ids to the values
-            for (int i = 0; i < values.Count; ++i)
-            {
-                values[i].FieldId = gridFields[i].Id;
-            }
-
-            // Calculate the index for the new row            
-            // Find all the values corresponding to some column
-
-            var sampleFieldId = values[0].FieldId;
-
-            var fieldValues = _dbContext.Values
-                .Where(value => value.FieldId == sampleFieldId)
-                .Select(value => value.RowIndex);
-
-            // If the column contains no values, default to 0, otherwise increment
-            var newRowIndex = fieldValues.Any() ? fieldValues.Max() + 1 : 0;
-
-            // Set the index and write the values
-            foreach (var value in values)
-            {
-                value.RowIndex = newRowIndex;
-            }
-
-            using var transaction = await _dbContext.Database.BeginTransactionAsync();
-
+            var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                _dbContext.AddRange(values);
-                if (await _dbContext.SaveChangesAsync() != values.Count)
-                {
-                    throw new Exception("Not all values were inserted");
-                }
+                await _dbContext.DeleteFieldsAsync(fieldIds);
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "While inserting a row");
-                return Problem("Failed to insert a row");
+                await transaction.RollbackAsync();
+                return Problem(e.Message);
             }
             await transaction.CommitAsync();
-            
-            return Ok(values);
+
+            return Ok(fieldIds);
+        }
+
+        /// <summary>Adds a new row to the grid</summary>
+        [HttpPost("row/{gridId}")]
+        public async Task<IActionResult> AddRow(int gridId, [FromBody] List<DataGridValueDto> valueDtos)
+        {
+            try
+            {
+                await _dbContext.InsertRowIntoGridAsync(gridId, valueDtos.Select(valueDto => valueDto.ToDataGridValue()));
+            }
+            catch (Exception e)
+            {
+                return Problem(e.Message);
+            }
+
+            return Ok();
         }
     }
 

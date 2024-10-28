@@ -12,6 +12,12 @@ namespace CentaureaTest.Models
         public int GridId { get; set; }
         public string Name { get; set; }
         public DataGridValueType Type { get; set; }
+
+        /// <remarks>
+        /// For ordering the fields within the table<br/>
+        /// Ordering is important not only for display, but also for row insertion
+        ///</remarks>
+        public int Order { get; set; }
     }
 
     public sealed class RegexFieldsTable : FieldsTable
@@ -46,6 +52,7 @@ namespace CentaureaTest.Models
                     Type = sig.Type,
                     GridId = gridId,
                     RegexPattern = sig.RegexPattern,
+                    Order = sig.Order,
                 },
                 DataGridRefFieldSignature sig => new RefFieldsTable
                 {
@@ -53,6 +60,7 @@ namespace CentaureaTest.Models
                     Type = sig.Type,
                     GridId = gridId,
                     ReferencedGridId = sig.ReferencedGridId,
+                    Order = sig.Order,
                 },
                 DataGridSingleSelectFieldSignature sig => new SingleSelectFieldsTable
                 {
@@ -60,6 +68,7 @@ namespace CentaureaTest.Models
                     Type = sig.Type,
                     GridId = gridId,
                     OptionTableId = sig.OptionTableId,
+                    Order = sig.Order,
                 },
                 DataGridMultiSelectFieldSignature sig => new MultiSelectFieldsTable
                 {
@@ -67,12 +76,14 @@ namespace CentaureaTest.Models
                     Type = sig.Type,
                     GridId = gridId,
                     OptionTableId = sig.OptionTableId,
+                    Order = sig.Order,
                 },
                 _ => new FieldsTable
                 {
                     Name = fieldSignature.Name,
                     Type = fieldSignature.Type,
                     GridId = gridId,
+                    Order = fieldSignature.Order,
                 },
             };
         }

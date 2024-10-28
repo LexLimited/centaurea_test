@@ -5,6 +5,8 @@ using System.Text.RegularExpressions;
 namespace CentaureaTest.Models
 {
 
+    public record DataGridValueValidationResult(bool Ok, string Error);
+
     [Table("values")]
     public abstract class DataGridValue
     {
@@ -15,18 +17,29 @@ namespace CentaureaTest.Models
 
         public int RowIndex { get; set; }
 
-        public DataGridValueType Type;
+        [NotMapped]
+        public DataGridValueType Type { get; set; }
 
-        public abstract (bool ok, string error) Validate(DataGridFieldSignature signature);
+        public abstract DataGridValueValidationResult Validate(DataGridFieldSignature signature);
 
-        protected static (bool ok, string error) ValidationOk()
+        public override string ToString()
         {
-            return (true, string.Empty);
+            return $"Type: {Type}, Id: {Id}, FieldId: {FieldId}, RowIndex: {RowIndex}";
         }
 
-        protected static (bool ok, string error) MismatchedTypeValidationError(DataGridValueType actualType, DataGridValueType expectedType)
+        protected static DataGridValueValidationResult ValidationOk()
         {
-            return (false, $"{actualType} value does not match expected signature type ({expectedType})");
+            return new DataGridValueValidationResult(true, string.Empty);
+        }
+
+        protected static DataGridValueValidationResult ValidationError(string message)
+        {
+            return new DataGridValueValidationResult(false, message);
+        }
+
+        protected static DataGridValueValidationResult MismatchedTypesValidationError(DataGridValueType actualType, DataGridValueType expectedType)
+        {
+            return new DataGridValueValidationResult(false, $"{actualType} value does not match expected signature type ({expectedType})");
         }
     }
 
@@ -40,7 +53,7 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.Numeric;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             return DataGridValue.ValidationOk(); 
         }
@@ -56,11 +69,11 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.String;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             return signature.Type == DataGridValueType.String
                 ? DataGridValue.ValidationOk()
-                : DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                : DataGridValue.MismatchedTypesValidationError(Type, signature.Type);
         }
     }
 
@@ -97,20 +110,20 @@ namespace CentaureaTest.Models
         /// <remarks>
         /// Email value with an invalid email cannot be constructed
         /// </remarks>
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
             {
-                return DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                return MismatchedTypesValidationError(Type, signature.Type);
             }
 
-            // NB: Redundant
+            // NB! Redundant
             if (!Validate(Value))
             {
-                return (false, "Email value is not a valid email");
+                return ValidationError("Email value is not a valid email");
             }
 
-            return DataGridValue.ValidationOk();
+            return ValidationOk();
         }
     }
 
@@ -124,24 +137,30 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.Regex;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override string ToString()
+        {
+            return $"{base.ToString()}, value: {Value}";
+        }
+
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
             {
-                return DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                return MismatchedTypesValidationError(Type, signature.Type);
             }
             else
             {
                 if (signature is not DataGridRegexFieldSignature regexSignature)
                 {
-                    // NB: Terrible case that should never happen
+                    // NB! Terrible case that should never happen
                     // Probably signifies that my design isn't right
                     throw new Exception("Maformed field signature: specified type is 'Regex', but the actual type is not");
                 }
                 else
                 {
-                    var ok = Regex.IsMatch(Value, regexSignature.RegexPattern);
-                    return (ok, ok ? string.Empty : $"Regex value does not satisfy the regex ({regexSignature.RegexPattern})");
+                    return Regex.IsMatch(Value, regexSignature.RegexPattern)
+                        ? ValidationOk()
+                        : ValidationError($"Regex value does not satisfy the regex ({regexSignature.RegexPattern})");
                 }
             }
         }
@@ -157,15 +176,15 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.Ref;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
             {
-                return DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                return MismatchedTypesValidationError(Type, signature.Type);
             }
 
             // TODO! Validate that the fieldId exists on the grid ?
-            return (true, string.Empty);
+            return ValidationOk();
         }
     }
 
@@ -179,15 +198,15 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.SingleSelect;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
             {
-                return DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                return MismatchedTypesValidationError(Type, signature.Type);
             }
 
             // TODO! Validate that the optionId exists in single select opnion table
-            return (true, string.Empty);
+            return ValidationOk();
         }
     }
 
@@ -201,15 +220,15 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.MultiSelect;
         }
 
-        public override (bool ok, string error) Validate(DataGridFieldSignature signature)
+        public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
             {
-                return DataGridValue.MismatchedTypeValidationError(Type, signature.Type);
+                return MismatchedTypesValidationError(Type, signature.Type);
             }
 
             // TODO! Validate that the optionIds exist in multi select option table
-            return (true, string.Empty);
+            return ValidationOk();
         }
     }
 

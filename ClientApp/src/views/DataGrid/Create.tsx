@@ -1,134 +1,89 @@
 import axios from 'axios';
-import React, { useState } from "react";
+import React, { useEffect, useState } from 'react';
 import { Models } from '@/Models/DataGrid';
 
-type IFieldPropsAssociatedValue = {
-    regexPattern?: string,
-    referencedGridId?: number,
-    optionTableId?: number,
+interface DataGridProps {
+    grid: Models.Dto.DataGridDto;
 }
 
-interface IFieldProps extends IFieldPropsAssociatedValue, Omit<React.ComponentProps<'div'>, 'onChange'> {
-    name: string,
-    type: Models.DataGridValueType,
-    onChange?: (_: IFieldPropsAssociatedValue) => void,
+async function fetchGrid(): Promise<Models.Dto.DataGridDto> {
+    return (await axios.get<Models.Dto.DataGridDto>(`http://localhost:5468/api/datagrid/grid?gridId=${45}`)).data;
 }
 
-const Field: React.FC<IFieldProps> = ({
-    name,
-    type,
-    regexPattern,
-    referencedGridId,
-    optionTableId,
-    onChange,
-    ...props
-}) => {
-    return (
-        <div style={{ padding: 10, background: 'rgba(0,0,0,0.1)', border: 'solid black 1px' }} {...props}>
-            <label>Type: {type}</label><br/>
-            <label>Name: {name}</label><br/>
-            {
-                regexPattern ? (
-                    <div>
-                        <label>Associated regex pattern: {regexPattern}</label><br/>
-                    </div>
-                ) : null
+export const Create: React.FC<DataGridProps> = () => {
+    const [grid, setGrid] = useState<Models.Dto.DataGridDto>();
+    const [requestStatus, setRequestStatus] = useState<'pending' | 'fail' | 'ok'>('pending');
+
+    useEffect(() => {
+        (async () => {
+            try {
+                setGrid(await fetchGrid());
+                setRequestStatus('ok');
+            } catch {
+                setRequestStatus('fail');
             }
-            {
-                referencedGridId ? (
-                    <div>
-                        <label>Associated regex pattern: {referencedGridId}</label><br/>
-                    </div>
-                ) : null
-            }
-            {
-                optionTableId ? (
-                    <div>
-                        <label>Associated regex pattern: {optionTableId}</label><br/>
-                    </div>
-                ) : null
-            }
-        </div>
-    );
-}
+        })();
+    }, []);
 
-interface IFieldsProps {
-    fields: Models.DataGridDto['signature']['fields'],
-}
-
-const Fields: React.FC<IFieldsProps> = ({ fields }) => {
-    if (fields.length == 0) {
-        return <div><label>Table has no fields</label></div>
+    if (requestStatus == 'pending') {
+        return <div><label>Please wait ...</label></div>
+    } else if (requestStatus == 'fail') {
+        return <div><label>Failed to fetch the grid</label></div>
     }
 
     return (
-        <div>{fields.map(Field)}</div>
-    );
-}
+        <div>
+            <h1>{grid.name}</h1>
 
-function createSampleDataGrid(): Models.DataGridDto {
-    return {
-        name: "Sample grid",
-        id: 0,
-        signature: {
-            fields: [
-                {
-                    name: "numeric field name",
-                    type: 'Numeric',
-                },
-                {
-                    name: "string field name",
-                    type: 'String',
-                },
-                {
-                    name: "regex field name",
-                    type: 'Regex',
-                    regexPattern: '[a-zA-Z_]'
-                },
-            ]
-        },
-        rows: [],
-    };
-}
+            <h2>Signature</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field Name</th>
+                        <th>Type</th>
+                        <th>Regex Pattern</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {grid.signature.fields.map((field, index) => (
+                        <tr key={index}>
+                            <td>{field.name}</td>
+                            <td>{field.type}</td>
+                            <td>{field.regexPattern || 'N/A'}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
 
-export function Create() {
-    const [grid, setGrid] = useState<Models.DataGridDto>(createSampleDataGrid());
-
-    const sendGrid = () => {
-        console.log('Will create the following grid:', grid);
-
-        axios.post("http://localhost:5468/api/datagrid/create", grid)
-            .then(() => console.log("Post ok"))
-            .catch((err) => console.error(`Post failed:`, err));
-    };
-
-    return (
-        <div style={{ display: "flex", flexDirection: "column", padding: "20px" }}>
-            <label>Create a new grid</label>
-            <input
-                placeholder="Grid name ..."
-                value={grid.name}
-                onChange={(e) => setGrid({ ...grid, name: e.target.value })}
-            />
-{/* 
-            <div style={{ marginTop: "10px" }}>
-                <label>Field Type:</label>
-                <select value={fieldType} onChange={(e) => setFieldType(e.target.value as Models.DataGridValueType)}>
-                    <option value="Numeric">Numeric</option>
-                    <option value="String">String</option>
-                    <option value="Email">Email</option>
-                    <option value="Regex">Regex</option>
-                    <option value="Ref">Ref</option>
-                    <option value="SingleChoice">Single Choice</option>
-                    <option value="MultipleChoice">Multiple Choice</option>
-                </select>
-            </div>
-
-            <button onClick={addField} style={{ marginTop: "10px" }}>Add Field</button> */}
-
-            <Fields fields={grid.signature.fields} />
-
-            <button onClick={sendGrid} style={{ marginTop: "20px" }}>Create Grid</button>
+            <h2>Rows</h2>
+            {grid.rows.length === 0 ? (
+                <p>No rows available.</p>
+            ) : (
+                <table>
+                    <thead>
+                        <tr>
+                            {grid.signature.fields.map((field, index) => (
+                                <th key={index}>{field.name}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {grid.rows.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                                {row.items.map((item) => {
+                                    // Display the value based on its type
+                                    const value = item.stringValue || item.numericValue || item.optionId || 'N/A';
+                                    return (
+                                        <td key={item.fieldId}>
+                                            {value}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )}
         </div>
     );
-}
+};

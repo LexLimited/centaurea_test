@@ -7,22 +7,26 @@ namespace CentaureaTest.Models
     {
         public int Id { get; set; }
         public string Name { get; set; }
+
         public DataGridValueType Type { get; set; }
 
-        public DataGridFieldSignature(string name, DataGridValueType type)
+        /// <remarks>See FieldTable.Order</remarks>
+        public int Order { get; set; }
+        public DataGridFieldSignature(string name, DataGridValueType type, int order)
         {
             Name = name;
             Type = type;
+            Order = order;
         }
 
         public static DataGridFieldSignature From(FieldsTable table)
         {
-            return new(table.Name, table.Type);
+            return new(table.Name, table.Type, table.Order);
         }
 
         public override string ToString()
         {
-            return $"Base field: Name: {Name}, Type: {Type}";
+            return $"Base field: Name: {Name}, Type: {Type}, Order: {Order}";
         }
     }
 
@@ -30,7 +34,7 @@ namespace CentaureaTest.Models
     {
         public string RegexPattern { get; set; }
 
-        public DataGridRegexFieldSignature(string name, string regexPattern) : base(name, DataGridValueType.Regex)
+        public DataGridRegexFieldSignature(string name, string regexPattern, int order) : base(name, DataGridValueType.Regex, order)
         {
             RegexPattern = regexPattern;
         }
@@ -45,7 +49,7 @@ namespace CentaureaTest.Models
     {
         public int ReferencedGridId { get; set; }
 
-        public DataGridRefFieldSignature(string name, int referencedGridId) : base(name, DataGridValueType.Ref)
+        public DataGridRefFieldSignature(string name, int referencedGridId, int order) : base(name, DataGridValueType.Ref, order)
         {
             ReferencedGridId = referencedGridId;
         }
@@ -55,7 +59,7 @@ namespace CentaureaTest.Models
     {
         public int OptionTableId { get; set; }
 
-        public DataGridSingleSelectFieldSignature(string name, int optionTableId) : base(name, DataGridValueType.SingleSelect)
+        public DataGridSingleSelectFieldSignature(string name, int optionTableId, int order) : base(name, DataGridValueType.SingleSelect, order)
         {
             OptionTableId = optionTableId;
         }
@@ -65,7 +69,7 @@ namespace CentaureaTest.Models
     {
         public int OptionTableId { get; set; }
 
-        public DataGridMultiSelectFieldSignature(string name, int optionTableId) : base(name, DataGridValueType.MultiSelect)
+        public DataGridMultiSelectFieldSignature(string name, int optionTableId, int order) : base(name, DataGridValueType.MultiSelect, order)
         {
             OptionTableId = optionTableId;
         }
@@ -87,11 +91,10 @@ namespace CentaureaTest.Models
 
         public DataGridSignature(IEnumerable<FieldsTable> fields)
         {
-            Fields = fields.Select(field => new DataGridFieldSignature(field.Name, field.Type))
-            .ToList();
+            Fields = fields.Select(field => new DataGridFieldSignature(field.Name, field.Type, field.Order)).ToList();
         }
 
-        public (bool ok, string error) ValidateValues(List<DataGridValue> valuesEnumerable)
+        public (bool ok, string error) ValidateValues(IEnumerable<DataGridValue> valuesEnumerable)
         {
             // NB! Probably worth optimizing, maybe not
             var values = valuesEnumerable.ToList();
@@ -120,11 +123,27 @@ namespace CentaureaTest.Models
         {
             return fieldsTable.Type switch
                 {
-                    DataGridValueType.Regex => new DataGridRegexFieldSignature(fieldsTable.Name, ((RegexFieldsTable)fieldsTable)?.RegexPattern ?? throw new Exception("Bad regex field")),
-                    DataGridValueType.Ref => new DataGridRefFieldSignature(fieldsTable.Name, ((RefFieldsTable)fieldsTable)?.ReferencedGridId ?? throw new Exception("Bad ref field")),
-                    DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(fieldsTable.Name, ((SingleSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad single select field")),
-                    DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(fieldsTable.Name, ((MultiSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad multi select field")),
-                    _ => new DataGridFieldSignature(fieldsTable.Name, fieldsTable.Type) // Default for basic fields
+                    DataGridValueType.Regex => new DataGridRegexFieldSignature(
+                        fieldsTable.Name,
+                        ((RegexFieldsTable)fieldsTable)?.RegexPattern ?? throw new Exception("Bad regex field"),
+                        fieldsTable.Order
+                    ),
+                    DataGridValueType.Ref => new DataGridRefFieldSignature(
+                        fieldsTable.Name,
+                        ((RefFieldsTable)fieldsTable)?.ReferencedGridId ?? throw new Exception("Bad ref field"),
+                        fieldsTable.Order
+                    ),
+                    DataGridValueType.SingleSelect => new DataGridSingleSelectFieldSignature(
+                        fieldsTable.Name,
+                        ((SingleSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad SingleSelect field"),
+                        fieldsTable.Order
+                    ),
+                    DataGridValueType.MultiSelect => new DataGridMultiSelectFieldSignature(
+                        fieldsTable.Name,
+                        ((MultiSelectFieldsTable)fieldsTable)?.OptionTableId ?? throw new Exception("Bad MultiSelect field"),
+                        fieldsTable.Order
+                    ),
+                    _ => new DataGridFieldSignature(fieldsTable.Name, fieldsTable.Type, fieldsTable.Order)
                 };
         }
 

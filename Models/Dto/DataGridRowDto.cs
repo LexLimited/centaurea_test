@@ -1,13 +1,18 @@
 using System.Text;
 
-namespace CentaureaTest.Models
+namespace CentaureaTest.Models.Dto
 {
 
-    public sealed class DataGridRow
+    public sealed class DataGridRowDto
     {
-        public List<DataGridValue> Items { get; private set; }
+        public List<DataGridValueDto> Items { get; set; }
 
-        public DataGridRow(IEnumerable<DataGridValue> items)
+        public DataGridRowDto()
+        {
+            Items = new List<DataGridValueDto>();
+        }
+
+        public DataGridRowDto(IEnumerable<DataGridValueDto> items)
         {
             Items = items.ToList();
         }
@@ -26,6 +31,11 @@ namespace CentaureaTest.Models
             builder.Append("}}");
 
             return builder.ToString();
+        }
+
+        public DataGridRow ToDataGridRow()
+        {
+            return new DataGridRow(Items.Select(valueDto => valueDto.ToDataGridValue()));
         }
     }
 
