@@ -86,7 +86,7 @@ namespace CentaureaTest.Controllers
                 {
                     try
                     {
-                        await _dbContext.InsertRowIntoGridAsync(createdGridId, row.Items);
+                        await _dbContext.InsertRowAsync(createdGridId, row.Items);
                     }
                     catch (Exception e)
                     {
@@ -202,7 +202,7 @@ namespace CentaureaTest.Controllers
         {
             try
             {
-                await _dbContext.InsertRowIntoGridAsync(gridId, valueDtos.Select(valueDto => valueDto.ToDataGridValue()));
+                await _dbContext.InsertRowAsync(gridId, valueDtos.Select(valueDto => valueDto.ToDataGridValue()));
             }
             catch (Exception e)
             {
