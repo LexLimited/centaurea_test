@@ -23,12 +23,18 @@ namespace CentaureaTest.Converters
                 ?? throw new Exception($"DataGridFieldSignatureConverter: object {value} cannot be casted to DataGridFieldSignature");
 
             writer.WriteStartObject();
+
+            writer.WritePropertyName("id");
+            writer.WriteNumberValue(fieldSignature.Id);
             
             writer.WritePropertyName("name");
             writer.WriteStringValue(fieldSignature.Name);
 
             writer.WritePropertyName("type");
             writer.WriteStringValue(fieldSignature.Type.ToString());
+
+            writer.WritePropertyName("order");
+            writer.WriteNumberValue(fieldSignature.Order);
 
             switch (fieldSignature)
             {
