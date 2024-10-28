@@ -4,11 +4,22 @@ using CentaureaTest.Auth;
 using CentaureaTest.Converters;
 using CentaureaTest.Data;
 using CentaureaTest.Middlewares;
-
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowAll", builder =>
+        {
+            builder
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+    });
 
 // Add services to the container.
 
@@ -38,18 +49,23 @@ builder.Services
 
 builder.Services.ConfigureApplicationCookie(options =>
     {
-       options.Cookie.HttpOnly = true; 
-       options.ExpireTimeSpan = TimeSpan.FromDays(7);
-       options.LoginPath = "/auth/login";
-       options.AccessDeniedPath = "/auth/register";
-       options.SlidingExpiration = true;
+        options.AccessDeniedPath = "/accessdenied";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.Name = "CentaureaCookie";
+        options.Cookie.Path = "/";
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromDays(7);
+        options.LoginPath = "/auth/login";
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.SlidingExpiration = true;
     });
 
-builder.Services.AddAuthentication("CookieAuth")
-    .AddCookie("CookieAuth", options =>
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
     {
-        options.LoginPath = "/account/login";
-        options.LogoutPath = "/account/logout";
+        options.LoginPath = "/auth/login";
+        options.AccessDeniedPath = "/accessdenied";
+        options.LogoutPath = "/auth/logout";
     });
 
 builder.Services.AddLogging();
@@ -69,6 +85,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseCors("AllowAll");
     app.UseSwagger();
     app.UseSwaggerUI();
 }

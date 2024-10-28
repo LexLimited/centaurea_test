@@ -12,7 +12,7 @@ namespace CentaureaTest.Auth
 
         public static ApplicationUser ToApplciationUser()
         {
-            return new ApplicationUser(USERNAME, PASSWORD, Role.Superuser);
+            return new ApplicationUser(USERNAME, Role.Superuser);
         }
     }
 
