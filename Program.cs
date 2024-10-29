@@ -100,7 +100,7 @@ using (var scope = app.Services.CreateScope())
 using (var scope = app.Services.CreateScope())
 {
     var serviceProvider = scope.ServiceProvider;
-    await AuthDbContext.SeedRoleAndSuperuser(serviceProvider);
+    // await AuthDbContext.SeedRoleAndSuperuser(serviceProvider);
 }
 
 app.UseHttpsRedirection();

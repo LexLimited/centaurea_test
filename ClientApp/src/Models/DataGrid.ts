@@ -1,7 +1,12 @@
 export namespace Models {
     export type DataGridValueType = "Numeric" | "String" | "Email" | "Regex" | "Ref" | "SingleSelect" | "MultiSelect";
 
-        export namespace Dto {
+    export namespace Dto {
+
+        export type DataGridDescriptor = {
+            name: string,
+            id: number,
+        };
 
         export type DataGridFieldSignatureDto = {
             name: string,

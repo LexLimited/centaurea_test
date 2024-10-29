@@ -1,6 +1,7 @@
 import { RouteObject } from "react-router-dom";
 import { Index } from "./Index";
 import { Create } from "./Create";
+import { Edit } from "./Edit";
 
 export const DataGridRoutes = [
     {
@@ -8,12 +9,16 @@ export const DataGridRoutes = [
         children: [
             {
                 index: true,
-                element: <Create />,
+                element: <Edit />,
             },
             {
                 path: "create",
                 element: <Create />
             },
+            {
+                path: "edit",
+                element: <Edit />
+            }
         ]
     },
 ] as RouteObject[]

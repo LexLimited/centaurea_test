@@ -11,7 +11,7 @@ namespace CentaureaTest.Data
     {
         public DbSet<IdentityRole> IdentityRole { get; set; }
 
-        public AuthDbContext(DbContextOptions<AuthDbContext> options, ILogger<AuthDbContext> logger) : base(options) {}
+        public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) {}
 
         public static async Task SeedRoleAndSuperuser(IServiceProvider serviceProvider)
         {
