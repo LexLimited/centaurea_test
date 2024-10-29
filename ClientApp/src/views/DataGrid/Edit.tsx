@@ -3,7 +3,7 @@ import { DataGrid, GridColDef, GridCellEditStopParams, GridValidRowModel, GridCo
 import { Button, Grid } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
-import { NewFieldNameInput } from './NewFieldNameInput';
+import { NewNameInput } from './NewNameInput';
 
 function GridContainer({ children, style }: any) {
     return (
@@ -35,7 +35,8 @@ function GridIdsList({
     }
 
     const options = gridDescriptors.map(descriptor => (
-        <Button
+        <CButton
+            style={{ width: 175 }}
             key={descriptor.id}
             disabled={selectedId == descriptor.id}
             onClick={() => {
@@ -44,7 +45,7 @@ function GridIdsList({
             }}
         >
             {JSON.stringify(descriptor.name)}
-        </Button>
+        </CButton>
     ));
 
     return (
@@ -188,6 +189,8 @@ function GridView({
 
     const [errorMessage, setErrorMessage] = React.useState<string>();
 
+    const [renamingGrid, setRenamingGrid] = React.useState<boolean>();
+
     const editedRowSnapshot = React.useRef<CentaureaGridRowModel>();
     const editedColumnId = React.useRef<number>();
 
@@ -207,8 +210,13 @@ function GridView({
         };
     }
 
-    function mapDtoRowToGridRow(dtoRow: Models.Dto.DataGridRowDto, idx: number): CentaureaGridRowModel {
-        const ret: CentaureaGridRowModel = { id: idx };
+    function mapDtoRowToGridRow(dtoRow: Models.Dto.DataGridRowDto ): CentaureaGridRowModel {
+        const id = dtoRow.items[0]?.rowIndex;
+        if (id == undefined) {
+            throw "Received an empty row";
+        }
+
+        const ret: CentaureaGridRowModel = { id };
 
         // for (let fieldId of FIELD_IDS) {
         //     const dtoValue = dtoRow.items.find(item => item.fieldId == fieldId);
@@ -255,7 +263,7 @@ function GridView({
 
         if (renamingField) {
             return (
-                <NewFieldNameInput
+                <NewNameInput
                     onCommit={async (newName) => {
                         // TODO! Stop reloading the window
                         CentaureaApi.renameField(FIELD_ID, newName)
@@ -288,7 +296,13 @@ function GridView({
         filterable: false,
         renderCell: (params: GridCellParams) => {
             return (
-                <CButton style={{ background: 'rgba(255, 0, 0, 0.25)' } onClick={() => console.log('TODO! Delete row')}>
+                <CButton
+                    style={{ background: 'rgba(255, 0, 0, 0.25)' }}
+                    onClick={() => {
+                        CentaureaApi.deleteRow(gridDto.id!, Number.parseInt(`${params.id}`))
+                            .then(() => window.location.reload());
+                    }}
+                >
                     Delete row
                 </CButton>
             )
@@ -382,6 +396,25 @@ function GridView({
             <CButton onClick={() => {}}>
                 Add New Column
             </CButton>
+            {
+                renamingGrid
+                    ? (
+                        <NewNameInput
+                            onCommit={newName => {
+                                CentaureaApi.renameGrid(gridDto.id!, newName)
+                                    .then(() => window.location.reload());
+                            }}
+                            onFinished={() => {
+                                setRenamingGrid(false);
+                            }}
+                        />
+                    )
+                    : (
+                        <CButton onClick={() => setRenamingGrid(true)}>
+                            Rename grid
+                        </CButton>
+                    )
+            }
             <CButton
                 style={{ backgroundColor: 'rgba(255, 0, 0, 0.25)' }}
                 onClick={deleteGrid}

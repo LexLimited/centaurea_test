@@ -144,6 +144,23 @@ namespace centaureatest.Migrations
                     b.ToTable("single_select");
                 });
 
+            modelBuilder.Entity("CentaureaTest.Models.DataGridEmailValue", b =>
+                {
+                    b.HasBaseType("CentaureaTest.Models.DataGridValue");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.ToTable("values", t =>
+                        {
+                            t.Property("Value")
+                                .HasColumnName("DataGridEmailValue_Value");
+                        });
+
+                    b.HasDiscriminator().HasValue("Email");
+                });
+
             modelBuilder.Entity("CentaureaTest.Models.DataGridMultiSelectValue", b =>
                 {
                     b.HasBaseType("CentaureaTest.Models.DataGridValue");

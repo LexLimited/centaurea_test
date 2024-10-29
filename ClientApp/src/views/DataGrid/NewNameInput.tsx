@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Button, TextField } from '@mui/material';
 
-interface NewFieldNameInputProps {
+interface NewNameInputProps {
     onCommit?: (fieldName: string) => void;
     onFinished?: () => void;
 }
 
-export const NewFieldNameInput: React.FC<NewFieldNameInputProps> = ({ onCommit, onFinished }) => {
+export const NewNameInput: React.FC<NewNameInputProps> = ({ onCommit, onFinished }) => {
     const [fieldName, setFieldName] = useState<string>('');
     const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -22,7 +22,7 @@ export const NewFieldNameInput: React.FC<NewFieldNameInputProps> = ({ onCommit, 
             marginBottom: 16,
         }}>
             <TextField
-                label="New Field Name"
+                label="New Name"
                 value={fieldName}
                 onChange={handleFieldNameChange}
                 variant="outlined"

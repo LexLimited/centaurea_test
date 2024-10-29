@@ -62,8 +62,16 @@ export namespace CentaureaApi {
         );
     }
 
+    export async function renameGrid(gridId: number, newName: string) {
+        return axiosInstance.put(`/grid/${gridId}/rename?newName=${newName}`);
+    }
+
     export async function deleteField(fieldId: number) {
         return await axiosInstance.delete<number>(`/field/${fieldId}`);
+    }
+
+    export async function deleteRow(gridId: number, rowIndex: number) {
+        return await axiosInstance.delete<number[]>(`/row/${gridId}?rowIndex=${rowIndex}`);
     }
 
 }

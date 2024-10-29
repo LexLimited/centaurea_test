@@ -5,24 +5,24 @@
 namespace centaureatest.Migrations
 {
     /// <inheritdoc />
-    public partial class ChangeColumnIdToFieldId : Migration
+    public partial class AddEmailToValueDiscriminator : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "ColumnId",
+            migrationBuilder.AddColumn<string>(
+                name: "DataGridEmailValue_Value",
                 table: "values",
-                newName: "FieldId");
+                type: "text",
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "FieldId",
-                table: "values",
-                newName: "ColumnId");
+            migrationBuilder.DropColumn(
+                name: "DataGridEmailValue_Value",
+                table: "values");
         }
     }
 }

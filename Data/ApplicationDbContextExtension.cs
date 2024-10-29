@@ -34,7 +34,8 @@ namespace CentaureaTest.Data
         public static IEnumerable<DataGridValue> GetGridRow(this ApplicationDbContext dbContext, int gridId, int rowIndex)
         {
             var fields = dbContext.GetGridFields(gridId);
-            return dbContext.Values.Where(value => fields.Any(field => field.Id == value.FieldId));
+            return dbContext.Values
+                .Where(value => fields.Any(field => field.Id == value.FieldId) && value.RowIndex == rowIndex);
         }
 
         public static IEnumerable<(int RowIndex, DataGridRow Row)> GetGridRows(this ApplicationDbContext dbContext, int gridId)
@@ -272,12 +273,44 @@ namespace CentaureaTest.Data
 
         /// <summary>Validates all values including single and multi select</summary>
         /// <remarks>Throws if the value is invalid (see 'ValidateValue' of signature for more)</remarks>
-        public static void ValidateValue(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
+        public static async void ValidateValue(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
         {
             var (ok, message) = value.Validate(signature);
             if (!ok)
             {
                 throw new Exception(message);
+            }
+
+            /// Validate ref, single and multi select
+            if (value.Type == DataGridValueType.Ref)
+            {
+                var refValue = (DataGridRefValue)value ?? throw new Exception("Inconsistent object");
+                if (await dbContext.Fields.FindAsync(refValue.ReferencedFieldId) is null)
+                {
+                    throw new Exception($"Field {refValue.ReferencedFieldId} does not exist");
+                }
+            }
+
+            if (value.Type == DataGridValueType.SingleSelect)
+            {
+                var singleSelectValue = (DataGridSingleSelectValue)value ?? throw new Exception("Inconsistent object");
+                if (await dbContext.Fields.FindAsync(singleSelectValue.OptionId) is null)
+                {
+                    throw new Exception($"Option {singleSelectValue.OptionId} does not exist");
+                }
+            }
+
+            if (value.Type == DataGridValueType.MultiSelect)
+            {
+                var multiSelectValue = (DataGridMultiSelectValue)value ?? throw new Exception("Inconsistent object");
+                var missingOptionIds = multiSelectValue.OptionIds
+                    .Where(optionId => !dbContext.MultiSelectOptions
+                    .Any(option => option.Id == optionId));
+
+                if (missingOptionIds.Any())
+                {
+                    throw new Exception("Some multi select options do not exist");
+                }
             }
         }
 
@@ -292,7 +325,16 @@ namespace CentaureaTest.Data
                 throw new Exception(message);
             }
 
-            /// Validate single and multi select
+            /// Validate ref, single and multi select
+            var refValues = values.OfType<DataGridRefValue>();
+            foreach (var value in refValues)
+            {
+                if (await dbContext.Fields.FindAsync(value.ReferencedFieldId) is null)
+                {
+                    throw new Exception($"Field {value.ReferencedFieldId} does not exist");
+                }
+            }
+
             var singleSelectValues = values.OfType<DataGridSingleSelectValue>();
             foreach (var value in singleSelectValues)
             {
@@ -341,6 +383,9 @@ namespace CentaureaTest.Data
                 DataGridValueType.Regex => await dbContext.Values.OfType<DataGridRegexValue>()
                     .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
 
+                DataGridValueType.Ref => await dbContext.Values.OfType<DataGridRefValue>()
+                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
+
                 _ => throw new NotImplementedException($"Updating values of type {value.Type} is not implemented")
             } ?? throw new Exception($"Value at field {value.FieldId}, row {value.RowIndex} not found");
 
@@ -357,6 +402,10 @@ namespace CentaureaTest.Data
 
                 case DataGridRegexValue regexValue:
                     ((DataGridRegexValue)existingValue).Value = regexValue.Value;
+                    break;
+
+                case DataGridRefValue refValue:
+                    ((DataGridRefValue)existingValue).ReferencedFieldId = refValue.ReferencedFieldId;
                     break;
 
                 default:

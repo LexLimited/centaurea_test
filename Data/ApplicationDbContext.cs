@@ -39,6 +39,7 @@ public class ApplicationDbContext : DbContext
             .HasValue<DataGridValue>("Base")
             .HasValue<DataGridNumericValue>("Numeric")
             .HasValue<DataGridStringValue>("String")
+            .HasValue<DataGridEmailValue>("Email")
             .HasValue<DataGridRegexValue>("Regex")
             .HasValue<DataGridRefValue>("Ref")
             .HasValue<DataGridSingleSelectValue>("SingleSelect")

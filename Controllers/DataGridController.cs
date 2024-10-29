@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Reflection.Metadata.Ecma335;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
@@ -205,6 +206,21 @@ namespace CentaureaTest.Controllers
 
             return await _dbContext.SaveChangesAsync() == values.Count
                 ? Ok(values.Select(value => value.Id)) : Problem("Failed to remove some values");
+        }
+
+        /// <summary>Renames an existing grid</summary>
+        [HttpPut("grid/{gridId}/rename")]
+        public async Task<IActionResult> RenameGrid(int gridId, [FromQuery, Required] string newName)
+        {
+            var grid = await _dbContext.Grids.FindAsync(gridId);
+            if (grid is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            grid.Name = newName;
+            return await _dbContext.SaveChangesAsync() == 1
+                ? Ok(newName) : Problem("Failed to rename a grid");
         }
     }
 
