@@ -5,7 +5,7 @@ namespace CentaureaTest.Models.Dto
     {
         public static DataGridValue ToDataGridValue(this DataGridValueDto valueDto)
         {
-            return valueDto.Type switch
+            DataGridValue value = valueDto.Type switch
             {
                 DataGridValueType.String => new DataGridStringValue(
                     valueDto.StringValue ?? throw new Exception("'StringValue' field expected for type 'String'")
@@ -30,6 +30,9 @@ namespace CentaureaTest.Models.Dto
                 ),
                 _ => throw new NotImplementedException($"ToDataGridValue doesn't handle type {valueDto.Type}"),
             };
+
+            value.RowIndex = valueDto.RowIndex;
+            return value;
         }
 
         public static DataGridRow ToDataGridRow(this DataGridRowDto rowDto)

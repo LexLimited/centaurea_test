@@ -14,6 +14,7 @@ namespace CentaureaTest.Models.Dto
         public string? StringValue { get; set; }
         public decimal? NumericValue { get; set; }
         public int? IntValue { get; set; }
+        public int RowIndex { get; set; }
         public List<int>? IntListValue { get; set; }
 
         public override string ToString()

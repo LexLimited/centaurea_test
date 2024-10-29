@@ -19,6 +19,14 @@ namespace CentaureaTest.Models
             Order = order;
         }
 
+        public DataGridFieldSignature(int id, string name, DataGridValueType type, int order)
+        {
+            Id = id;
+            Name = name;
+            Type = type;
+            Order = order;
+        }
+
         public static DataGridFieldSignature From(FieldsTable table)
         {
             return new(table.Name, table.Type, table.Order);
@@ -39,6 +47,11 @@ namespace CentaureaTest.Models
             RegexPattern = regexPattern;
         }
 
+        public DataGridRegexFieldSignature(int id, string name, string regexPattern, int order) : base(id, name, DataGridValueType.Regex, order)
+        {
+            RegexPattern = regexPattern;
+        }
+
         public override string ToString()
         {
             return $"Regex field: Name: {Name}, Type: {Type}, RegexPattern: {RegexPattern}";
@@ -50,6 +63,11 @@ namespace CentaureaTest.Models
         public int ReferencedGridId { get; set; }
 
         public DataGridRefFieldSignature(string name, int referencedGridId, int order) : base(name, DataGridValueType.Ref, order)
+        {
+            ReferencedGridId = referencedGridId;
+        }
+
+        public DataGridRefFieldSignature(int id, string name, int referencedGridId, int order) : base(id, name, DataGridValueType.Ref, order)
         {
             ReferencedGridId = referencedGridId;
         }
@@ -72,6 +90,20 @@ namespace CentaureaTest.Models
         public DataGridSignature(IEnumerable<FieldsTable> fields)
         {
             Fields = fields.Select(field => new DataGridFieldSignature(field.Name, field.Type, field.Order)).ToList();
+        }
+
+        public (bool ok, string error) ValidateValue(DataGridValue value)
+        {
+            var field = Fields.Find(field => field.Id == value.FieldId);
+            if (field is null)
+            {
+                return (false, "Value does not belong to the signature (no matching field id)");
+            }
+
+            // TODO! Can I destructure inplace?
+            // Why am I useing pairs anyway
+            var (ok, error) = value.Validate(field);
+            return (ok, error);
         }
 
         /// <summary>
@@ -108,16 +140,18 @@ namespace CentaureaTest.Models
             return fieldsTable.Type switch
                 {
                     DataGridValueType.Regex => new DataGridRegexFieldSignature(
+                        fieldsTable.Id,
                         fieldsTable.Name,
                         ((RegexFieldsTable)fieldsTable)?.RegexPattern ?? throw new Exception("Bad regex field"),
                         fieldsTable.Order
                     ),
                     DataGridValueType.Ref => new DataGridRefFieldSignature(
+                        fieldsTable.Id,
                         fieldsTable.Name,
                         ((RefFieldsTable)fieldsTable)?.ReferencedGridId ?? throw new Exception("Bad ref field"),
                         fieldsTable.Order
                     ),
-                    _ => new DataGridFieldSignature(fieldsTable.Name, fieldsTable.Type, fieldsTable.Order)
+                    _ => new DataGridFieldSignature(fieldsTable.Id, fieldsTable.Name, fieldsTable.Type, fieldsTable.Order)
                 };
         }
 

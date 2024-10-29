@@ -1,5 +1,12 @@
 export namespace Models {
-    export type DataGridValueType = "Numeric" | "String" | "Email" | "Regex" | "Ref" | "SingleSelect" | "MultiSelect";
+    export type DataGridValueType =
+        | "Numeric"
+        | "String"
+        | "Email"
+        | "Regex"
+        | "Ref"
+        | "SingleSelect"
+        | "MultiSelect";
 
     export namespace Dto {
 
@@ -9,8 +16,10 @@ export namespace Models {
         };
 
         export type DataGridFieldSignatureDto = {
+            id: number,
             name: string,
             type: DataGridValueType,
+            order: number,
             regexPattern?: string,
             referencedGridId?: number,
             optionId?: number,
@@ -20,26 +29,22 @@ export namespace Models {
             fields: DataGridFieldSignatureDto[],
         };
 
-        export type DataGridRowItemDto = {
+        export type DataGridValueDto = {
             id: number,
             fieldId: number,
             rowIndex: number,
+            type: DataGridValueType,
+
             stringValue?: string,
             numericValue?: number,
+            intValue?: number;
             referencedFieldId?: number,
             optionId?: number,
             optionIds?: number[],
-        }
-        // & (
-        //     | { stringValue: string }
-        //     | { numericValue: number }
-        //     | { referencedFieldId: number }
-        //     | { optionId: number }
-        //     | { optionIds: number[] }
-        // );
+        };
 
         export type DataGridRowDto = {
-            items: DataGridRowItemDto[],
+            items: DataGridValueDto[],
         };
 
         export type DataGridDto = {

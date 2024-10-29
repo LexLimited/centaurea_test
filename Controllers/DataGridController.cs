@@ -1,4 +1,4 @@
-using CentaureaTest.Auth;
+using System.ComponentModel.DataAnnotations;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
@@ -34,13 +34,11 @@ namespace CentaureaTest.Controllers
         public async Task<IActionResult> GetGridById([FromQuery] int gridId)
         {
             var grid = await _dbContext.GetDataGridAsync(gridId);
-            
-            return grid is null
-                ? new NotFoundResult() : Ok(grid);
+            return grid is null ? new NotFoundResult() : Ok(grid);
         }
         
         /// <summary>Creates a new grid</summary>
-        [Authorize(Roles = "Admin, SuperUser")]
+        // [Authorize(Roles = "Admin, SuperUser")]
         [HttpPost("grid")]
         public async Task<IActionResult> CreateGrid([FromBody] CreateDataGridDto gridDto)
         {
@@ -97,6 +95,40 @@ namespace CentaureaTest.Controllers
             }
 
             return Ok(fieldsTable);
+        }
+
+        /// <summary>Sets a single value (cell) within the field</summary>
+        [HttpPut("field/{fieldId}/value")]
+        public async Task<IActionResult> UpdateFieldValue([FromRoute] int fieldId, [FromBody] DataGridValueDto valueDto)
+        {
+            try
+            {
+                var value = valueDto.ToDataGridValue();
+                value.FieldId = fieldId;
+
+                await _dbContext.UpdateValueAsync(value);
+                return Ok(valueDto);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
+        // TODO! Move newName to query parameters
+        /// <summary>Renames an existing field</summary>
+        [HttpPut("field/{fieldId}/rename")]
+        public async Task<IActionResult> RenameField(int fieldId, [FromBody, Required] string newName)
+        {
+            var field = await _dbContext.Fields.FindAsync(fieldId);
+            if (field is null)
+            {
+                return BadRequest($"Field {fieldId} does not exist");
+            }
+
+            field.Name = newName;
+            return await _dbContext.SaveChangesAsync() == 1
+                ? Ok(newName) : Problem("Failed to change the name of the field");
         }
 
         /// <summary>Deletes a field from a grid</summary>
@@ -156,6 +188,23 @@ namespace CentaureaTest.Controllers
             }
 
             return Ok();
+        }
+
+        /// <summary>Deletes a row by gridId and rowIndex</summary>
+        [HttpDelete("row/{gridId}")]
+        public async Task<IActionResult> DeleteRow(int gridId, [FromQuery, Required] int rowIndex)
+        {
+            var grid = await _dbContext.Grids.FindAsync(gridId);
+            if (grid is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            var values = _dbContext.GetGridRow(gridId, rowIndex).ToList();
+            _dbContext.RemoveRange(values);
+
+            return await _dbContext.SaveChangesAsync() == values.Count
+                ? Ok(values.Select(value => value.Id)) : Problem("Failed to remove some values");
         }
     }
 

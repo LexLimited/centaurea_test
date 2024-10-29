@@ -19,8 +19,7 @@ namespace CentaureaTest.Converters
 
         public override void Write(Utf8JsonWriter writer, DataGridFieldSignature value, JsonSerializerOptions options)
         {
-            var fieldSignature = value as DataGridFieldSignature
-                ?? throw new Exception($"DataGridFieldSignatureConverter: object {value} cannot be casted to DataGridFieldSignature");
+            var fieldSignature = value;
 
             writer.WriteStartObject();
 

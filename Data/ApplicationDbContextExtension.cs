@@ -4,7 +4,11 @@ using System.Security;
 using System.Text.RegularExpressions;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Server.IIS.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace CentaureaTest.Data
 {
@@ -25,6 +29,12 @@ namespace CentaureaTest.Data
             return dbContext.Fields
                 .Where(field => field.GridId == gridId)
                 .OrderBy(field => field.Order);
+        }
+
+        public static IEnumerable<DataGridValue> GetGridRow(this ApplicationDbContext dbContext, int gridId, int rowIndex)
+        {
+            var fields = dbContext.GetGridFields(gridId);
+            return dbContext.Values.Where(value => fields.Any(field => field.Id == value.FieldId));
         }
 
         public static IEnumerable<(int RowIndex, DataGridRow Row)> GetGridRows(this ApplicationDbContext dbContext, int gridId)
@@ -260,9 +270,18 @@ namespace CentaureaTest.Data
             await dbContext.DeleteFieldsAsync(dependentFields);
         }
 
-        /// <summary>
-        /// Validates all values including single and multi select
-        /// </summary>
+        /// <summary>Validates all values including single and multi select</summary>
+        /// <remarks>Throws if the value is invalid (see 'ValidateValue' of signature for more)</remarks>
+        public static void ValidateValue(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
+        {
+            var (ok, message) = value.Validate(signature);
+            if (!ok)
+            {
+                throw new Exception(message);
+            }
+        }
+
+        /// <summary>Validates all values including single and multi select</summary>
         /// <remarks>Throws if values are invalid</remarks>
         public static async Task ValidateValues(this ApplicationDbContext dbContext, DataGridSignature signature, IEnumerable<DataGridValue> values)
         {
@@ -294,6 +313,57 @@ namespace CentaureaTest.Data
                     throw new Exception("Some multi select options do not exist");
                 }
             }
+        }
+
+        /// <summary>Updates an existing value Throws on failure</summary>
+        public static async Task UpdateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        {
+            var field = await dbContext.Fields.FindAsync(value.FieldId);
+
+            if (field is null)
+            {
+                throw new Exception($"Field {value.FieldId} does not exist");
+            }
+
+            var signature = field.ToDataGridFieldSignature();
+            dbContext.ValidateValue(signature, value);
+
+
+            /// TODO! Lyuti costyl -- this must be rewritten
+            DataGridValue existingValue = value.Type switch
+            {
+                DataGridValueType.String => await dbContext.Values.OfType<DataGridStringValue>()
+                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex) as DataGridValue,
+
+                DataGridValueType.Numeric => await dbContext.Values.OfType<DataGridNumericValue>()
+                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
+
+                DataGridValueType.Regex => await dbContext.Values.OfType<DataGridRegexValue>()
+                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
+
+                _ => throw new NotImplementedException($"Updating values of type {value.Type} is not implemented")
+            } ?? throw new Exception($"Value at field {value.FieldId}, row {value.RowIndex} not found");
+
+            // Update the existing value based on type-specific casting
+            switch (value)
+            {
+                case DataGridStringValue stringValue:
+                    ((DataGridStringValue)existingValue).Value = stringValue.Value;
+                    break;
+
+                case DataGridNumericValue numericValue:
+                    ((DataGridNumericValue)existingValue).Value = numericValue.Value;
+                    break;
+
+                case DataGridRegexValue regexValue:
+                    ((DataGridRegexValue)existingValue).Value = regexValue.Value;
+                    break;
+
+                default:
+                    throw new NotImplementedException($"Updating values of type {value.Type} is not implemented");
+            }
+
+            await dbContext.SaveChangesAsync();
         }
 
         /// <remarks>
