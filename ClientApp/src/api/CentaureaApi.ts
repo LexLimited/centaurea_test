@@ -34,6 +34,10 @@ export namespace CentaureaApi {
         return axiosInstance.get<Models.Dto.DataGridDto>(`grid?gridId=${gridId}`);
     }
 
+    export async function createGrid(gridDto: Models.Dto.DataGridDto) {
+        return axiosInstance.post(`grid`, gridDto);
+    }
+
     export type CentaureaApiPutValueHandleExtraParams = {
         fieldId: number,
         rowIndex: number,

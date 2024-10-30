@@ -20,6 +20,7 @@ namespace CentaureaTest.Models
         [NotMapped]
         public DataGridValueType Type { get; set; }
 
+        /// <remarks>Returns validation result, does not throw!!!</remarks>
         public abstract DataGridValueValidationResult Validate(DataGridFieldSignature signature);
 
         public override string ToString()

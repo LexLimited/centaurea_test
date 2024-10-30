@@ -22,7 +22,7 @@ export namespace Models {
             order: number,
             regexPattern?: string,
             referencedGridId?: number,
-            optionId?: number,
+            options?: string[],
         };
 
         export type DataGridSignatureDto = {

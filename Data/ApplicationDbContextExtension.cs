@@ -1,3 +1,4 @@
+using centaureatest.Migrations.AuthDb;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -287,25 +288,36 @@ namespace CentaureaTest.Data
             await dbContext.DeleteFieldsAsync(dependentFields);
         }
 
-        /// <remarks>Throws on validation failure, otherwise doesn't</remarks>
-        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
         {
-            switch (value)
+            foreach (var value in values)
             {
-                case DataGridRefValue refValue:
-                    await dbContext.ValidateValueAsync(refValue);
-                    break;
-
-                case DataGridSingleSelectValue singleSelectValue:
-                    await dbContext.ValidateValueAsync(singleSelectValue);
-                    break;
-
-                case DataGridMultiSelectValue multiSelectValue:
-                    await dbContext.ValidateValueAsync(multiSelectValue);
-                    break;
-            };
+                await dbContext.ValidateValueAsync(value);
+            }
         }
 
+        /// <summary>Validates the field signature and special values (complete validation)</summary>
+        /// <remarks>Throws on validation failure</remarks>
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        {
+            var field = await dbContext.Fields.FindAsync(value.FieldId);
+            if (field is null)
+            {
+                throw new Exception($"Field {value.FieldId} does not exist");
+            }
+
+            var signature = field.ToDataGridFieldSignature();
+            var (ok, message) = value.Validate(signature);
+            if (!ok)
+            {
+                throw new Exception(message);
+            }
+
+            await dbContext.ValidateSpecialValueAsync(value);
+        }
+
+        /// <summary>Validates that the reference of a ref value</summary>
+        /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridRefValue value)
         {
             if (await dbContext.Fields.FindAsync(value.ReferencedFieldId) is null)
@@ -314,6 +326,8 @@ namespace CentaureaTest.Data
             }
         }
 
+        /// <summary>Validate the options of a single select value</summary>
+        /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridSingleSelectValue value)
         {
             if (await dbContext.SingleSelectOptions.FindAsync(value.OptionId) is null)
@@ -322,6 +336,8 @@ namespace CentaureaTest.Data
             }
         }
 
+        /// <summary>Validate the options of a multi select value</summary>
+        /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
         {
             foreach (var optionId in value.OptionIds)
@@ -333,42 +349,7 @@ namespace CentaureaTest.Data
             }
         }
 
-        public static async Task ValidateValues(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
-        {
-            foreach (var value in values)
-            {
-                await dbContext.ValidateValueAsync(value);
-            }
-        }
-
-        public static async Task ValidateValues(this ApplicationDbContext dbContext, IEnumerable<DataGridSingleSelectValue> values)
-        {
-            foreach (var value in values)
-            {
-                await dbContext.ValidateValueAsync(value);
-            }
-        }
-
-        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridMultiSelectValue> values)
-        {
-            foreach (var value in values)
-            {
-                await dbContext.ValidateMultiSelectValueAsync(value);
-            }
-        }
-
-        public static async Task ValidateMultiSelectValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
-        {
-            foreach (var optionId in value.OptionIds)
-            {
-                if (await dbContext.MultiSelectOptions.FindAsync(optionId) is null)
-                {
-                    throw new Exception($"Multi select option {optionId} does not exist");
-                }
-            }
-        }
-
-        /// <summary>Check if the value if special (ref, select) and if so, validates its validity</summary>
+        /// <summary>Check if the value if special (ref, select) and if so, validates it</summary>
         public static async Task ValidateSpecialValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
         {
             switch (value)
@@ -387,53 +368,10 @@ namespace CentaureaTest.Data
             }
         }
 
-        public static async Task ValidateSpecialValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
-        {
-            foreach (var value in values)
-            {
-                await dbContext.ValidateSpecialValueAsync(value);
-            }
-        }
-
-        /// <summary>Validates all values including ref, single and multi select</summary>
-        /// <remarks>Throws if the value is invalid (see 'ValidateValue' of signature for more)</remarks>
-        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
-        {
-            var (ok, message) = value.Validate(signature);
-            if (!ok)
-            {
-                throw new Exception(message);
-            }
-
-            await dbContext.ValidateSpecialValueAsync(value);
-        }
-
-        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
-        {
-            await dbContext.ValidateSpecialValuesAsync(values);
-        }
-
-        /// <summary>Validates all values including single and multi select</summary>
-        /// <remarks>Throws if values are invalid</remarks>
-        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, DataGridSignature signature, IEnumerable<DataGridValue> values)
-        {
-            var (ok, message) = signature.ValidateValues(values);
-            if (!ok)
-            {
-                throw new Exception(message);
-            }
-
-            await dbContext.ValidateValuesAsync(values);
-        }
-
         /// <summary>Updates an existing value Throws on failure</summary>
         public static async Task UpdateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
         {
-            var field = await dbContext.Fields.FindAsync(value.FieldId)
-                ?? throw new Exception($"Field {value.FieldId} does not exist");
-            
-            var signature = field.ToDataGridFieldSignature();
-            await dbContext.ValidateValueAsync(signature, value);
+            await dbContext.ValidateValueAsync(value);
 
             var existingValue = await dbContext.Values
                 .Where(existingValue => existingValue.FieldId == value.FieldId && existingValue.RowIndex == value.RowIndex)
@@ -491,6 +429,8 @@ namespace CentaureaTest.Data
 
             if (existingValue is null)
             {
+                await dbContext.ValidateValueAsync(value);
+
                 await dbContext.Values.AddAsync(value);
                 if (await dbContext.SaveChangesAsync() != 1)
                 {
@@ -541,7 +481,7 @@ namespace CentaureaTest.Data
             }
 
             // Validate the values against the signature
-            await dbContext.ValidateValuesAsync(signature, values);
+            await dbContext.ValidateValuesAsync(values);
 
             if (values.Count == 0)
             {
@@ -666,6 +606,24 @@ namespace CentaureaTest.Data
             dbContext.Grids.Add(gridsTable);
             await dbContext.SaveChangesAsync();
             return gridsTable.Id;
+        }
+
+        public static async Task AddFieldToGridAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignature fieldSignature)
+        {
+            var grid = await dbContext.Grids.FindAsync(gridId);
+            if (grid is null)
+            {
+                throw new Exception($"Grid {gridId} does not exist");
+            }
+
+            var fieldsTable = fieldSignature.ToFieldsTable(gridId);
+            await dbContext.Fields.AddAsync(fieldsTable);
+            
+            var nAdded = await dbContext.SaveChangesAsync();
+            if (nAdded != 1)
+            {
+                throw new Exception("Failed to add a field");
+            }
         }
 
         /// <summary>Create single and multiselect tables from dto</summary>

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Data.Common;
 using System.Reflection.Metadata.Ecma335;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
@@ -71,7 +72,7 @@ namespace CentaureaTest.Controllers
         }
 
         /// <summary>Renames an existing grid</summary>
-        [HttpPut("/grid/{gridId}/rename")]
+        [HttpPut("grid/{gridId}/rename")]
         public async Task<IActionResult> RenameGrid(int gridId, [FromQuery, Required] string newName)
         {
             var grid = await _dbContext.Grids.FindAsync(gridId);
@@ -85,7 +86,7 @@ namespace CentaureaTest.Controllers
         }
 
         /// <summary>Adds a new column to an existing table</summary>
-        [HttpPost("{gridId}/field")]
+        [HttpPost("grid/{gridId}/field")]
         public async Task<IActionResult> AddField(int gridId, [FromBody] DataGridFieldSignatureDto fieldSignatureDto)
         {
             var fieldSignature = fieldSignatureDto.ToDataGridFieldSignature();
@@ -94,22 +95,16 @@ namespace CentaureaTest.Controllers
                 return BadRequest("Invalid field signature");
             }
 
-            var grid = await _dbContext.Grids.FindAsync(gridId);
-            if (grid is null)
+            try
             {
-                return NotFound($"Grid {gridId} does not exist");
+                await _dbContext.AddFieldToGridAsync(gridId, fieldSignature);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
             }
 
-            var fieldsTable = fieldSignature.ToFieldsTable(gridId);
-            await _dbContext.Fields.AddAsync(fieldsTable);
-            
-            var nAdded = await _dbContext.SaveChangesAsync();
-            if (nAdded != 1)
-            {
-                return Problem("Failed to add a field");
-            }
-
-            return Ok(fieldsTable);
+            return Ok(fieldSignature);
         }
 
         /// <summary>Sets a single value (cell) within the field</summary>
@@ -162,7 +157,38 @@ namespace CentaureaTest.Controllers
                 ? Ok(valueId) : Problem("Failed to delete a value");
         }
 
-        // TODO! Move newName to query parameters
+        /// TODO! Unfinished and incorrect, rewrite it
+        /// <summary>Updates an existing field</summary>
+        [HttpPut("grid/{gridId}/field")]
+        public async Task<IActionResult> UpdateField(int gridId, [FromQuery, Required] int fieldId, [FromBody, Required] DataGridFieldSignatureDto fieldDto)
+        {
+            var field = await _dbContext.Fields.FindAsync(fieldId);
+            if (field is null)
+            {
+                return BadRequest($"Field {fieldId} does not exist");
+            }
+
+            var order = field.Order;
+            _dbContext.Fields.Remove(field);
+            if (await _dbContext.SaveChangesAsync() != 1)
+            {
+                return Problem("Failed to remove the field");   
+            }
+
+            var fieldSignature = fieldDto.ToDataGridFieldSignature();
+            
+            try
+            {
+                await _dbContext.AddFieldToGridAsync(gridId, fieldSignature);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+
+            return Ok(fieldDto);
+        }
+
         /// <summary>Renames an existing field</summary>
         [HttpPut("field/{fieldId}/rename")]
         public async Task<IActionResult> RenameField(int fieldId, [FromQuery, Required] string newName)

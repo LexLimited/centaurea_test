@@ -1,147 +1,194 @@
 import * as React from 'react';
-import { DataGrid, GridColDef, GridCellEditStopParams } from '@mui/x-data-grid';
-import { Button } from '@mui/material';
-
-function PopUpWindows({ children, style, ...props }: any) {
-  return (
-    <div style={{ position: 'absolute', background: 'white', padding: '1em', border: '1px solid #ccc', ...style }}>
-      {children}
-    </div>
-  );
-}
+import { useState } from 'react';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem } from '@mui/material';
+import { Models } from '@/Models/DataGrid';
+import { CentaureaApi } from '@/api/CentaureaApi';
 
 export function Create() {
-  const [rows, setRows] = React.useState([
-    { id: 1, col1: 'Hello', col2: 'World' },
-    { id: 2, col1: 'DataGridPro', col2: 'is Awesome' },
-    { id: 3, col1: 'MUI', col2: 'is Amazing' },
-  ]);
+  const [gridName, setGridName] = useState<string>('');
 
-  const [columns, setColumns] = React.useState<GridColDef[]>([
-    { field: 'col1', headerName: 'Column 1', width: 150, editable: true },
-    { field: 'col2', headerName: 'Column 2', width: 150, editable: true },
-  ]);
+  const [columns, setColumns] = useState<{ fieldDef: any, colDef: GridColDef }[]>([]); // Stores column definitions
 
-  const [popUpShown, setPopUpShown] = React.useState<boolean>(false);
+  const [openDialog, setOpenDialog] = useState<boolean>(false); // Manages dialog visibility
+  
+  const [newField, setNewColumn] = useState<{
+    name: string,
+    type: Models.DataGridValueType,
+    options: any,
+  }>({
+    name: '',
+    type: '',
+    options: null,
+  }); // Manages new column details
 
-  // Function to remove a column
-  const removeColumn = (field: string) => {
-    setColumns((prevColumns) => prevColumns.filter((col) => col.field !== field));
-  };
+  // Function to map column definitions to DataGrid field signature DTOs
+  function createDataGridSignatureFieldDtos(): Models.Dto.DataGridFieldSignatureDto[] {
+    return columns.map((column, index) => {
+      const { name, type, options } = column.fieldDef;
+      const dto: Models.Dto.DataGridFieldSignatureDto = {
+        name: name,
+        type: type,
+        order: index,
+      };
 
-  // Function to change a column's name
-  const changeColumnName = (field: string, newHeaderName: string) => {
-    setColumns((prevColumns) =>
-      prevColumns.map((col) =>
-        col.field === field ? { ...col, headerName: newHeaderName } : col
-      )
-    );
-  };
+      switch (type) {
+        case 'Regex':
+          dto.regexPattern = options; // Store the regex pattern
+          break;
+        case 'Ref':
+          dto.referencedGridId = options; // Store the reference grid ID
+          break;
+        case 'SingleSelect':
+        case 'MultiSelect':
+          dto.options = options; // Store options as an array of strings
+          break;
+        default:
+          break; // No additional fields for basic types like string, number, email
+      }
+      return dto;
+    });
+  }
 
-  // Function to add a new column on the far right
-  const addColumn = () => {
-    const newField = `col${columns.length + 1}`;
-    const newColumn: GridColDef = {
-      field: newField,
-      headerName: `New Column ${columns.length + 1}`,
-      width: 150,
-      editable: true,
+  // Creates DataGrid DTO for preview
+  function createDataGridDto(): Models.Dto.DataGridDto {
+    return {
+      name: gridName,
+      rows: [], // No rows
+      signature: {
+        fields: createDataGridSignatureFieldDtos(),
+      }
     };
-    setColumns((prevColumns) => [...prevColumns, newColumn]);
+  }
 
-    // Add the new column with empty data for each row
-    setRows((prevRows) =>
-      prevRows.map((row) => ({ ...row, [newField]: '' }))
-    );
+  // Open the dialog to add a new column
+  const handleAddColumnClick = () => setOpenDialog(true);
+
+  // Close the dialog
+  const handleCloseDialog = () => {
+    setNewColumn({ name: '', type: '', options: null });
+    setOpenDialog(false);
   };
 
-  const FancyButtonPair = ({
-    callbackLeft,
-    callbackRight,
-  }: {
-    callbackLeft?: () => any,
-    callbackRight?: () => any,
-  }) => {
-    return (
-      <div>
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={callbackLeft}
-          style={{ marginRight: 5 }}
-        >
-          Remove
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={callbackRight}
-        >
-          Rename
-        </Button>
-      </div>
-    )
+  // Handle form submission to add column
+  const handleAddColumn = () => {
+    console.log('Adding a field:', newField);
+    const newColumn: GridColDef = {
+      field: newField.name,
+      headerName: newField.name,
+    };
+
+    setColumns([...columns, { fieldDef: newField, colDef: newColumn }]);
+    handleCloseDialog();
   };
+
+  // Render settings based on column type
+  const renderExtraSettings = () => {
+    switch (newField.type) {
+      case 'Regex':
+        return (
+          <TextField
+            label="Enter Regex Pattern"
+            fullWidth
+            margin="dense"
+            value={newField.options || ""}
+            onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
+          />
+        );
+      case 'Ref':
+        return (
+          <TextField
+            label="Reference ID (int)"
+            fullWidth
+            margin="dense"
+            value={newField.options || ""}
+            onChange={(e) => setNewColumn({ ...newField, options: parseInt(e.target.value) })}
+          />
+        );
+      case 'SingleSelect':
+      case 'MultiSelect':
+        return (
+          <TextField
+            label="Options (comma-separated)"
+            fullWidth
+            margin="dense"
+            value={newField.options || ""}
+            onChange={(e) =>
+              setNewColumn({
+                ...newField,
+                options: e.target.value.split(',').map((val) => val.trim()),
+              })
+            }
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Render grid DTO preview in console
+  async function handleCreateClick() {
+    const gridDto = createDataGridDto();
+
+    CentaureaApi.createGrid(gridDto)
+      .then(console.log)
+      .catch(err => {
+        console.error('[Error] creation failed:', err);
+        console.log('[Info] the following json failed:', JSON.stringify(gridDto));
+      });
+  }
 
   return (
     <div style={{ height: 400, width: '100%' }}>
-      <DataGrid
-        slots={{
-          columnMenu: (props) => {
-            return (
-              <div>
-                <button onClick={() => {
-                  const colIndex = columns.findIndex(col => col.field == props.colDef.field);
-                  let newColumns = [...columns];
-                  newColumns.splice(colIndex, 1);
-                  setColumns(newColumns);
-                }}>Remove</button>
-                <button onClick={() => {
-                }}>Rename</button>
-              </div>
-            )
-          },
-        }}
-        rows={rows}
-        columns={[
-          ...columns,
-          {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 150,
-            renderCell: (params) => FancyButtonPair({
-              callbackLeft: () => removeColumn(params.field),
-              callbackRight: () => {
-                const newHeaderName = prompt('Enter new column name:', params.colDef.headerName);
-                if (newHeaderName) changeColumnName(params.field, newHeaderName);
-              }
-            }),
-          },
-        ]}
-        onCellClick={(params) => {
-          if (params.field !== 'actions') {
-            params.api.startCellEditMode({ id: params.id, field: params.field });
-          }
-        }}
-        onCellEditStop={(params) => {
-          params.api.stopCellEditMode({ id: params.id, field: params.field });
-        }}
-        processRowUpdate={(updatedRow, _, params) => {
-          const rowIndex = rows.findIndex((row) => row.id === params.rowId);
-          const updatedRows = [...rows];
-          updatedRows[rowIndex] = updatedRow;
-          setRows(updatedRows);
-        }}
+      <Button variant="contained" onClick={handleAddColumnClick}>Add Column</Button>
+      <Button variant="contained" onClick={handleCreateClick}>Create</Button>
+      <TextField
+        label="Grid Name" // New field for grid name
+        fullWidth
+        margin="dense"
+        value={gridName}
+        onChange={(e) => setGridName(e.target.value)} // Update grid name state
       />
-      <Button variant="contained" onClick={addColumn} style={{ margin: '10px 0' }}>
-        Add New Column
-      </Button>
-      <Button onClick={() => setPopUpShown(!popUpShown)}>Click to render JSON</Button>
-      {popUpShown ? (
-        <PopUpWindows style={{ top: 350, left: 10 }}>
-          <pre>{JSON.stringify({ rows, columns }, null, 2)}</pre>
-        </PopUpWindows>
-      ) : null}
+      <DataGrid
+        columns={columns.map(c => c.colDef)}
+        rows={[]} // No rows
+        autoHeight
+      />
+
+      {/* Dialog for adding new column */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Add New Column</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Column Name"
+            fullWidth
+            margin="dense"
+            value={newField.name}
+            onChange={(e) => setNewColumn({ ...newField, name: e.target.value })}
+          />
+          <Select
+            fullWidth
+            margin="dense"
+            value={newField.type}
+            onChange={(e) => setNewColumn({ ...newField, type: e.target.value })}
+            displayEmpty
+          >
+            <MenuItem value="" disabled>Select Type</MenuItem>
+            <MenuItem value="String">String</MenuItem>
+            <MenuItem value="Numeric">Number</MenuItem>
+            <MenuItem value="Email">Email</MenuItem>
+            <MenuItem value="Regex">Regex</MenuItem>
+            <MenuItem value="Ref">Ref</MenuItem>
+            <MenuItem value="SingleSelect">Single Select</MenuItem>
+            <MenuItem value="MultiSelect">Multi Select</MenuItem>
+          </Select>
+          {renderExtraSettings()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleAddColumn} variant="contained">Add Column</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
