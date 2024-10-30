@@ -23,7 +23,7 @@ export const LogIn = () => {
             // Handle successful login
             if (response.status === 200) {
                 // Redirect to the desired page, e.g., dashboard
-                navigate('/'); // Adjust this route as needed
+                // navigate('/'); // Adjust this route as needed
             } else {
                 setError('Invalid username or password');
             }

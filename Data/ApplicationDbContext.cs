@@ -1,4 +1,5 @@
 using CentaureaTest.Models;
+using CentaureaTest.Models.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace CentaureaTest.Data;
@@ -10,6 +11,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<DataGridValue> Values { get; set; }
     public DbSet<SingleSelectTable> SingleSelectOptions { get; set; }
     public DbSet<MultiSelectTable> MultiSelectOptions { get; set; }
+    public DbSet<GridPermission> GridPermssions { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) {}
 

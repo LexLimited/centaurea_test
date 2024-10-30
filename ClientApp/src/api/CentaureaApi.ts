@@ -98,4 +98,12 @@ export namespace CentaureaApi {
         return authInstance.post(`/login`, logInModel);
     }
 
+    export async function getUsers() {
+        return authInstance.get<Models.ApplicationUser[]>(`/users`);
+    }
+
+    export async function setGridPermissions(gridId: number, allowedUser: string[]) {
+        return axiosInstance.post(`/grid/${gridId}/permissions`, allowedUser);
+    }
+
 }

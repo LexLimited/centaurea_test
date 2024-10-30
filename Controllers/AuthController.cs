@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace CentaureaTest.Models
@@ -164,6 +165,20 @@ namespace CentaureaTest.Models
                 Message = $"Failed to assign {user.UserName} to role {assignRole.RoleName}",
                 result.Errors,
             });
+        }
+
+        [HttpGet("users")]
+        [Authorize(Roles = "Admin, Superuser")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var userRole = await _roleManager.FindByNameAsync("User");
+            if (userRole is null || userRole.Name is null)
+            {
+                return Problem("Role 'User' not found");
+            }
+
+            var userUsers = await _userManager.GetUsersInRoleAsync(userRole.Name);
+            return Ok(userUsers);
         }
 
     }

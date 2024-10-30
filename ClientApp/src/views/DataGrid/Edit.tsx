@@ -4,6 +4,7 @@ import { Button, Grid } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
 import { NewFieldNameInput } from './NewFieldNameInput';
+import { UserPermissionSelector } from './UserPermissionSelector';
 
 function GridContainer({ children, style }: any) {
     return (
@@ -444,6 +445,7 @@ function GridView({
                 Delete grid
             </CButton>
             <ErrorPanel message={errorMessage}/>
+            <UserPermissionSelector />
         </GridContainer>
     );
 }

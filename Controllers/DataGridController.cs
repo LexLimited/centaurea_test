@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Drawing;
 using CentaureaTest.Data;
+using CentaureaTest.Models.Auth;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +11,7 @@ namespace CentaureaTest.Controllers
 
     [ApiController]
     [Route("api/datagrid")]
-    [Authorize(Roles = "User, Admin, Superuser")]
+    // [Authorize(Roles = "Admin, Superuser")]
     public sealed class DataGridController : Controller
     {
         private readonly ApplicationDbContext _dbContext;
@@ -276,6 +278,25 @@ namespace CentaureaTest.Controllers
 
             return await _dbContext.SaveChangesAsync() == values.Count
                 ? Ok(values.Select(value => value.Id)) : Problem("Failed to remove some values");
+        }
+
+        /// <summary>Sets permissions for a grid by username</summary>
+        [HttpPost("grid/{gridId}/permissions")]
+        public async Task<IActionResult> SetGridPermission(int gridId, [FromBody, Required] List<string> allowedUsers)
+        {
+            if (await _dbContext.Grids.FindAsync(gridId) is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            await _dbContext.GridPermssions.AddRangeAsync(allowedUsers.Select(username => new GridPermission
+                {
+                    GridId = gridId,
+                    UserName = username,
+                }));
+
+            return await _dbContext.SaveChangesAsync() == allowedUsers.Count
+                ? Ok(allowedUsers) : Problem("Failed to set some users");
         }
     }
 

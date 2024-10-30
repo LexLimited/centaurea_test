@@ -56,4 +56,9 @@ export namespace Models {
 
     } // Dto
 
+    export type ApplicationUser = {
+        userName: string,
+        userId: string,
+    };
+
 } // Models

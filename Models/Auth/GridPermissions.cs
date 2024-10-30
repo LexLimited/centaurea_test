@@ -4,13 +4,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CentaureaTest.Models.Auth
 {
 
-    [Table("GridPermissions")]
+    [Table(name: "GridPermissions")]
     public sealed class GridPermission
     {
         [Key]
         public int GridId { get; set; }
 
-        public string UserId { get; set; }
+        public string UserName { get; set; }
     }
 
 }
