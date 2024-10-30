@@ -4,11 +4,8 @@ using CentaureaTest.Models.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace CentaureaTest.Models
 {
@@ -106,7 +103,7 @@ namespace CentaureaTest.Models
                 return BadRequest("Username or password is incorrect");
             }
 
-            return Ok();
+            return Ok(user);
         }
 
         [HttpPost("logout")]
@@ -181,6 +178,28 @@ namespace CentaureaTest.Models
             return Ok(userUsers);
         }
 
+        [HttpGet("whoami")]
+        [AllowAnonymous]
+        public IActionResult WhoAmI()
+        {
+            if (User.Identity is null || !User.Identity.IsAuthenticated)
+            {
+                return Unauthorized("User is not authenticated");
+            }
+
+            var username = User.Identity.Name;
+            var roles = User.Claims
+                .Where(claim => claim.Type == ClaimTypes.Role)
+                .Select(claim => claim.Value)
+                .ToList();
+
+            return Ok(new
+            {
+                Username = username,
+                Roles = roles,
+                IsPrivileged = roles.Where(role => role == "Admin" || role == "Superuser").Any(),
+            });
+        }
     }
 
 }

@@ -6,15 +6,18 @@ import { GlobalNotificationProvider } from "./components/GlobalNotifierProvider"
 import { I18nProvider } from './components/I18nProvider';
 import router from './router';
 import '@/styles/global.css';
+import { AuthProvider } from './context/AuthContext';
 
 createRoot(document.getElementById('root')!).render(
-  <FluentProvider theme={teamsLightTheme}>
-    <GlobalDialogProvider>
-      <GlobalNotificationProvider>
-        <I18nProvider>
-          <RouterProvider router={router} />
-        </I18nProvider>
-      </GlobalNotificationProvider>
-    </GlobalDialogProvider>
-  </FluentProvider>
+  <AuthProvider>
+    <FluentProvider theme={teamsLightTheme}>
+      <GlobalDialogProvider>
+        <GlobalNotificationProvider>
+          <I18nProvider>
+            <RouterProvider router={router} />
+          </I18nProvider>
+        </GlobalNotificationProvider>
+      </GlobalDialogProvider>
+    </FluentProvider>
+  </AuthProvider>
 );

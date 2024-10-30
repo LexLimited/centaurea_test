@@ -94,8 +94,21 @@ export namespace CentaureaApi {
         return axiosInstance.delete<number[]>(`/row/${gridId}?rowIndex=${rowIndex}`);
     }
 
-    export async function logIn(logInModel: { username: string, password: string }) {
-        return authInstance.post(`/login`, logInModel);
+    export type CentaureaRole = 'User' | 'Admin' | 'Superuser';
+
+    export type LogInModel = {
+        username: string,
+        password: string,
+    };
+
+    export type LogInResult = {
+        role: CentaureaRole,
+        id: string,
+        userName: string,
+    };
+
+    export async function logIn(logInModel: LogInModel) {
+        return authInstance.post<LogInResult>(`/login`, logInModel);
     }
 
     export async function getUsers() {
@@ -104,6 +117,16 @@ export namespace CentaureaApi {
 
     export async function setGridPermissions(gridId: number, allowedUser: string[]) {
         return axiosInstance.post(`/grid/${gridId}/permissions`, allowedUser);
+    }
+
+    export type WhoAmIResult = {
+        username: string,
+        roles: CentaureaRole[],
+        isPrivileged: boolean,
+    };
+
+    export async function whoAmI() {
+        return authInstance.get<WhoAmIResult>('whoami');
     }
 
 }

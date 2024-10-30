@@ -1,3 +1,4 @@
+using System.Security.Cryptography.Xml;
 using centaureatest.Migrations.AuthDb;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
@@ -300,13 +301,14 @@ namespace CentaureaTest.Data
         /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
         {
-            var field = await dbContext.Fields.FindAsync(value.FieldId);
-            if (field is null)
-            {
-                throw new Exception($"Field {value.FieldId} does not exist");
-            }
+            var field = await dbContext.Fields.FindAsync(value.FieldId)
+                ?? throw new Exception($"Field {value.FieldId} does not exist");
+            
+            await dbContext.ValidateValueAsync(field.ToDataGridFieldSignature(), value);
+        }
 
-            var signature = field.ToDataGridFieldSignature();
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
+        {
             var (ok, message) = value.Validate(signature);
             if (!ok)
             {
@@ -314,6 +316,20 @@ namespace CentaureaTest.Data
             }
 
             await dbContext.ValidateSpecialValueAsync(value);
+        }
+
+        /// <summary>Only used to insert grid dto</summary>
+        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, int gridId, DataGridSignature signature, List<DataGridValue> values)
+        {
+            if (signature.Fields.Count != values.Count)
+            {
+                throw new Exception("Invalida length: rows must precisely satisfy the signature when creating the grid");
+            }
+
+            for (int i = 0; i < signature.Fields.Count; ++i)
+            {
+                await dbContext.ValidateValueAsync(signature.Fields[i].ToFieldsTable(gridId).ToDataGridFieldSignature(), values[i]);
+            }
         }
 
         /// <summary>Validates that the reference of a ref value</summary>
@@ -481,12 +497,7 @@ namespace CentaureaTest.Data
             }
 
             // Validate the values against the signature
-            await dbContext.ValidateValuesAsync(values);
-
-            if (values.Count == 0)
-            {
-                throw new Exception("Values are valid, but the number of values is 0");
-            }
+            await dbContext.ValidateValuesAsync(gridId, signature, values);
 
             // Assign field ids to the values
             for (int i = 0; i < values.Count; ++i)
@@ -662,6 +673,16 @@ namespace CentaureaTest.Data
         /// <remarks>Throws on failure</remarks>
         public static async Task CreateTablesFromDtoTransactionAsync(this ApplicationDbContext dbContext, CreateDataGridDto gridDto)
         {
+            if (string.IsNullOrWhiteSpace(gridDto.Name))
+            {
+                throw new Exception("Grid name should not be empty or consiste of whitespaces only");
+            }
+
+            if (dbContext.Grids.Where(grid => grid.Name == gridDto.Name).Any())
+            {
+                throw new Exception($"Grid {gridDto.Name} already exists");
+            }
+
             var transaction = await dbContext.Database.BeginTransactionAsync();
 
             try

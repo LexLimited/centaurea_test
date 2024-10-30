@@ -38,9 +38,7 @@ export namespace Models {
             stringValue?: string,
             numericValue?: number,
             intValue?: number;
-            referencedFieldId?: number,
-            optionId?: number,
-            optionIds?: number[],
+            intListValue?: number[],
         };
 
         export type DataGridRowDto = {

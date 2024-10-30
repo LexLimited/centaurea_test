@@ -1,17 +1,17 @@
 using System.ComponentModel.DataAnnotations;
-using System.Drawing;
 using CentaureaTest.Data;
 using CentaureaTest.Models.Auth;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CentaureaTest.Controllers
 {
 
     [ApiController]
     [Route("api/datagrid")]
-    // [Authorize(Roles = "Admin, Superuser")]
+    [Authorize(Roles = "Admin, Superuser")]
     public sealed class DataGridController : Controller
     {
         private readonly ApplicationDbContext _dbContext;
@@ -23,11 +23,34 @@ namespace CentaureaTest.Controllers
             _logger = logger;
         }
 
-        /// <summary>Dummy page for memes</summary>
+        /// <summary>Returns a list of existing grid</summary>
         [HttpGet]
-        public IActionResult Index()
+        [AllowAnonymous]
+        public async Task<IActionResult> Index()
         {
-            return Ok(_dbContext.Grids);
+            if (User.IsInRole("Admin") || User.IsInRole("Superuser"))
+            {
+                return Ok(_dbContext.Grids);
+            }
+
+            if (User.IsInRole("User"))
+            {
+                var username = User.Identity?.Name;
+                if (username is null)
+                {
+                    return Problem("User exists, but the name is null");
+                }
+
+                var userGridIds = await _dbContext.GridPermssions
+                    .Where(permission => permission.UserName == username)
+                    .Select(permission => permission.GridId)
+                    .ToListAsync();
+
+                var grids = _dbContext.Grids.Where(grid => userGridIds.Contains(grid.Id));
+                return Ok(grids);
+            }
+
+            return Redirect("/app/auth");
         }
 
         /// <summary>Returns an existing grid</summary>

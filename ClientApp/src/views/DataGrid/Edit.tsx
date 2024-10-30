@@ -84,8 +84,8 @@ function extractValueDtoValue(dtoValue?: Models.Dto.DataGridValueDto) {
         case 'Email': return dtoValue.stringValue;
         case 'Regex': return dtoValue.stringValue;
         case 'Ref': return dtoValue.intValue;
-        case 'SingleSelect': return dtoValue.optionId;
-        case 'MultiSelect': return dtoValue.optionIds;
+        case 'SingleSelect': return dtoValue.intValue;
+        case 'MultiSelect': return dtoValue.intListValue;
     };
 }
 
@@ -99,12 +99,14 @@ function setValueDtoValue(dtoValue: Models.Dto.DataGridValueDto, value: string) 
             break;
         case 'Regex': dtoValue.stringValue = value;
             break;
-        case 'Ref': dtoValue.referencedFieldId = Number.parseInt(value);
+        case 'Ref': dtoValue.intValue = Number.parseInt(value);
             break;
-        case 'SingleSelect': dtoValue.optionId = Number.parseInt(value);
+        case 'SingleSelect': dtoValue.intValue = Number.parseInt(value);
             break;
-        // TODO! Implement this case
-        case 'MultiSelect': throw "NotImplemented: setValueDtoValue for type 'MultiSelect' is not yet supported";
+        case 'MultiSelect':
+            let optArray = value.split(',').map(Number.parseInt);
+            dtoValue.intListValue = optArray;
+            console.log('optArray:', optArray);
             break;
     };
 }
@@ -445,7 +447,7 @@ function GridView({
                 Delete grid
             </CButton>
             <ErrorPanel message={errorMessage}/>
-            <UserPermissionSelector />
+            <UserPermissionSelector gridId={gridDto.id!}/>
         </GridContainer>
     );
 }

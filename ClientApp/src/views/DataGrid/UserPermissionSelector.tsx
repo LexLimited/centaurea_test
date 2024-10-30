@@ -15,6 +15,7 @@ export const UserPermissionSelector = ({ gridId }: { gridId: number }) => {
 
     React.useEffect(() => {
         const fetchAndSetOptions = async () => {
+            console.log('users:', await CentaureaApi.getUsers());
             setOptions((await CentaureaApi.getUsers()).data.map(user => user.userName));
         };
 
@@ -72,8 +73,10 @@ export const UserPermissionSelector = ({ gridId }: { gridId: number }) => {
                     </MenuItem>
                 ))}
             </Select>
-            <Button style={{ height: 55 }} onClick={() => {
-                CentaureaApi.setGridPermissions(gridId, selectedOptions);
+            <Button
+                style={{ height: 55 }}
+                onClick={() => {
+                    CentaureaApi.setGridPermissions(gridId, selectedOptions);
                 }}
             >
                 Submit

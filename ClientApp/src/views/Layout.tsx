@@ -1,7 +1,9 @@
 import { Button, Divider, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, makeStyles, tokens } from "@fluentui/react-components";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { I18nLocales, useI18n } from "@/components/I18nContext";
 import { Translate24Filled } from "@fluentui/react-icons";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 const useStyles = makeStyles({
     Root: {
@@ -40,12 +42,28 @@ const useStyles = makeStyles({
     }
 });
 
+const NavigationList = () => {
+    return (
+        <div>
+            <Link style={{ padding: 10 }} to="/auth">Login</Link>
+            <Link style={{ padding: 10 }} to="/datagridcreate">Create</Link>
+            <Link style={{ padding: 10 }} to="/datagridedit">Edit</Link>
+        </div>
+    );
+};
+
 export const Layout = () => {
     const styles = useStyles();
+
+    const { authStatus } = useContext(AuthContext);
 
     return (
         <div className={`${styles.Root} col`}>
             <div className={`${styles.Header} row align-center-1 px-5`}>
+                <div style={{ marginRight: 36, color: 'blue' }}>
+                    <h2 title={JSON.stringify(authStatus, null, 2)}>{authStatus.username || "Unauthenticated"}</h2>
+                </div>
+                <NavigationList />
                 <div className="grow"></div>
                 <LocalePicker />
                 <Divider className="no-grow mx-1" vertical />

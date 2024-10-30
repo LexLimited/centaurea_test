@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useContext, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, TextField, Typography, Container } from '@mui/material';
-import { CentaureaApi } from '@/api/CentaureaApi'; // Adjust the import path as needed
+import { AuthContext } from '@/context/AuthContext';
 
 export const LogIn = () => {
     const [username, setUsername] = useState('');
@@ -12,18 +12,29 @@ export const LogIn = () => {
     
     const navigate = useNavigate(); // Hook to programmatically navigate
 
+    const location = useLocation();
+
+    const { logIn } = useContext(AuthContext);
+
+    const queryParams = new URLSearchParams(location.search);
+    const returnUrl = queryParams.get('returnUrl');
+    const redirectReason = queryParams.get('redirectReason');
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(''); // Clear previous error
 
         try {
             // Call the login API
-            const response = await CentaureaApi.logIn({ username, password });
+            const response = await logIn(
+                { username, password },
+                () => {
+                    navigate(returnUrl || '/'); // Adjust this route as needed
+                }
+            );
 
             // Handle successful login
             if (response.status === 200) {
-                // Redirect to the desired page, e.g., dashboard
-                // navigate('/'); // Adjust this route as needed
             } else {
                 setError('Invalid username or password');
             }
@@ -35,6 +46,11 @@ export const LogIn = () => {
 
     return (
         <Container maxWidth="xs">
+            {
+                redirectReason
+                    ? <Typography color='red' variant="h4" gutterBottom>{redirectReason}</Typography>
+                    : null
+            }
             <Typography variant="h4" gutterBottom>Log In</Typography>
             <form onSubmit={handleSubmit}>
                 <TextField

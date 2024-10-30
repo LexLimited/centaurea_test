@@ -1,5 +1,6 @@
 import axios from 'axios';
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 
 class DataGridPayload {
     public id: number;
@@ -25,22 +26,5 @@ class DataGridPayload {
 }
 
 export function Index() {
-    const [grid, setGrid] = React.useState<DataGridPayload>(new DataGridPayload());
-
-    const postGrid = () => {
-        axios.post('http://localhost:5468/api/datagrid/create', grid.getPayload())
-            .then(() => console.log('Sent ok'))
-            .catch(console.error);
-    };
-
-    return (
-        <div>
-            <label style={{ marginRight: 10 }}>name</label>
-            <input placeholder='default name' onChange={e => {
-                grid.name = e.target.value;
-                setGrid(grid);
-            }}></input>
-            <button onClick={postGrid}>Create</button>
-        </div>
-    );
+    return <Outlet />
 }

@@ -2,6 +2,7 @@ import { RouteObject } from "react-router-dom";
 import { Index } from "./Index";
 import { Create } from "./Create";
 import { Edit } from "./Edit";
+import { ProtectedRoute } from "@/ProtectedRouter";
 
 export const DataGridRoutes = [
     {
@@ -12,14 +13,14 @@ export const DataGridRoutes = [
                 index: true,
                 element: <Edit />,
             },
-            // {
-            //     path: "create",
-            //     element: <Create />
-            // },
-            // {
-            //     path: "edit",
-            //     element: <Edit />
-            // }
+            {
+                path: "create",
+                element: <Create />
+            },
+            {
+                path: "edit",
+                element: <Edit />
+            }
         ]
     },
     {
@@ -28,6 +29,10 @@ export const DataGridRoutes = [
     },
     {
         path: "datagridcreate",
-        element: <Create />,
+        element: (
+            <ProtectedRoute>
+                <Create />
+            </ProtectedRoute>
+        ),
     }
 ] as RouteObject[]
