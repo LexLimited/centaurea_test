@@ -172,6 +172,16 @@ function ErrorPanel({
     );
 }
 
+function createValueDto(fieldId: number, type: Models.DataGridValueType, stringifiedValue: string) {
+    const newValueDto: Models.Dto.DataGridValueDto = {
+        fieldId,
+        type,
+    };
+
+    setValueDtoValue(newValueDto, stringifiedValue);
+    return newValueDto;
+}
+
 function GridView({
     gridDto,
     
@@ -209,7 +219,11 @@ function GridView({
     }
 
     function mapDtoRowToGridRow(dtoRow: Models.Dto.DataGridRowDto, idx: number): CentaureaGridRowModel {
-        const ret: CentaureaGridRowModel = { id: idx };
+        // Id is the row index
+        // If the row is virtual (doesn't exist in db), the index is undefined
+        // Otherwise it has an item and any item's rowIndex is the index
+        const id = dtoRow.items[0]?.rowIndex;
+        const ret: CentaureaGridRowModel = { id };
 
         // for (let fieldId of FIELD_IDS) {
         //     const dtoValue = dtoRow.items.find(item => item.fieldId == fieldId);
@@ -220,10 +234,9 @@ function GridView({
             const fieldId = dtoField.id;
 
             const dtoValue = dtoRow.items.find(item => item.fieldId == fieldId);
-            // If values doesn't exist in a row, make a default one
-            if (dtoValue == undefined) {
-                ret[fieldId] = {};
-            } else {
+
+            // If the value is undefined (not in db), leave it blank
+            if (!!dtoValue) {
                 ret[fieldId] = extractValueDtoValue(dtoValue);
             }
         }
@@ -294,7 +307,7 @@ function GridView({
                     onClick={() => {
                         console.log('params:', params);
                         CentaureaApi.deleteRow(gridDto.id!, Number.parseInt(`${params.id}`))
-                            // .then(() => window.location.reload());
+                            .then(() => window.location.reload());
                     }}
                 >
                     Delete row
@@ -330,35 +343,60 @@ function GridView({
                 processRowUpdate={async (updatedRow, _, params) => {
                     // Send update to the backend and change the fieldId to the actual value
                     // rowId is an index
-
+                    
                     const handleParams: CentaureaApi.CentaureaApiPutValueHandleExtraParams = {
-                        fieldId: editedColumnId.current,
+                        fieldId: editedColumnId.current!,
                         rowIndex: updatedRow.id,
                     }
 
                     const valueRowDto = dtoRows.find(row => {
+                        console.log('[Looking for value row dto] Looking in row', row);
+
                         return row.items.some(
                             item => item.fieldId == handleParams.fieldId
                                     && item.rowIndex == handleParams.rowIndex
                         );
                     });
 
-                    const valueDto = valueRowDto?.items.find(
+                    let valueDto = valueRowDto?.items.find(
                         item => item.fieldId == handleParams.fieldId
                                 && item.rowIndex == handleParams.rowIndex
                     );
 
-                    if (valueDto == undefined) {
-                        console.error('Failed to find value dto. handleParams: ', handleParams);
+                    const stringifiedValue = updatedRow[handleParams.fieldId!];
 
-                        if (editedRowSnapshot == undefined) {
-                            throw "editedRowSnapshot must be set before editing to roll back the grid's state";
+                    // If value dto does not exist, create a new one
+                    if (valueDto == undefined) {
+                        const newValueType = dtoFields.find(field => field.id == handleParams.fieldId)?.type;
+                        if (!newValueType) {
+                            throw `Failed to find for the value in field ${handleParams.fieldId}`;
                         }
 
-                        return editedRowSnapshot.current || editedRowSnapshot!;
+                        valueDto = createValueDto(
+                            handleParams.fieldId,
+                            newValueType!,
+                            stringifiedValue,
+                        );
+
+                        try {
+                            console.log('Dto value:', valueDto);
+                            const resValue = (await CentaureaApi.postValue(valueDto, handleParams))?.data;
+
+                            return {
+                                ...editedRowSnapshot.current!,
+                                [handleParams.fieldId!]: extractValueDtoValue(resValue)
+                            };
+                        } catch (e) {
+                            console.error('Api request failed:', e);
+                        }
+
+                        // if (editedRowSnapshot == undefined) {
+                        //     throw "editedRowSnapshot must be set before editing to roll back the grid's state";
+                        // }
+
+                        // return editedRowSnapshot.current || editedRowSnapshot!;
                     }
 
-                    const stringifiedValue = updatedRow[handleParams.fieldId!];
                     const validationResult = validateValueDto(valueDto);
                     if (!validationResult.ok) {
                         setErrorMessage(validationResult.message);
@@ -387,8 +425,11 @@ function GridView({
                     console.error('Row update process failed:', err);
                 }}
             />
-            <CButton onClick={() => {}}>
+            <CButton onClick={() => console.log('TODO! Add new column')}>
                 Add New Column
+            </CButton>
+            <CButton onClick={() => console.log('TODO! Add new row')}>
+                Add New Row
             </CButton>
             <CButton
                 style={{ backgroundColor: 'rgba(255, 0, 0, 0.25)' }}

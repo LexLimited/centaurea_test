@@ -436,7 +436,7 @@ namespace CentaureaTest.Data
             await dbContext.ValidateValueAsync(signature, value);
 
             var existingValue = await dbContext.Values
-                .Where(value => value.FieldId == value.FieldId && value.RowIndex == value.RowIndex)
+                .Where(existingValue => existingValue.FieldId == value.FieldId && existingValue.RowIndex == value.RowIndex)
                 .FirstOrDefaultAsync()
                 ?? throw new Exception($"Value at field {value.FieldId}, row {value.RowIndex} does not exist");
 
@@ -478,6 +478,41 @@ namespace CentaureaTest.Data
 
             // NB: doesn't check that the update was succesfull
             await dbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// If the value exist, updates it<br/>
+        /// Otherwise, creates a new value with an incremeneted rowIndex
+        /// </summary>
+        /// <returns>Id of updated/insert value</returns>
+        public static async Task<int> InsertValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        {
+            var existingValue = await dbContext.Values.FindAsync(value.Id);
+
+            if (existingValue is null)
+            {
+                await dbContext.Values.AddAsync(value);
+                if (await dbContext.SaveChangesAsync() != 1)
+                {
+                    throw new Exception("Failed to add a new value");
+                }
+
+                return value.Id;   
+            }
+            else
+            {
+                try
+                {
+                    await dbContext.UpdateValueAsync(value);
+                }
+                catch (Exception e)
+                {
+                    throw new Exception("InsertValue tried to update an existing value and failed", e);
+                }
+
+                return existingValue.Id;
+            }
+
         }
 
         /// <remarks>

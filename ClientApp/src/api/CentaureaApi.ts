@@ -35,8 +35,8 @@ export namespace CentaureaApi {
     }
 
     export type CentaureaApiPutValueHandleExtraParams = {
-        fieldId?: number,
-        rowIndex?: number,
+        fieldId: number,
+        rowIndex: number,
     };
 
     export async function putValue(dto: Models.Dto.DataGridValueDto, params: CentaureaApiPutValueHandleExtraParams) {
@@ -44,6 +44,13 @@ export namespace CentaureaApi {
         dto.rowIndex = params.rowIndex || dto.rowIndex;
 
         return axiosInstance.put<Models.Dto.DataGridValueDto>(`/value?fieldId=${dto.fieldId}`, dto);
+    }
+
+    export async function postValue(dto: Models.Dto.DataGridValueDto, params: CentaureaApiPutValueHandleExtraParams) {
+        dto.fieldId = params.fieldId || dto.fieldId;
+        dto.rowIndex = params.rowIndex || dto.rowIndex;
+
+        return axiosInstance.post<Models.Dto.DataGridValueDto>(`/value?fieldId=${dto.fieldId}`, dto);
     }
 
     export async function deleteGrid(gridId: number) {

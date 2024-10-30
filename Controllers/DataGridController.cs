@@ -130,6 +130,24 @@ namespace CentaureaTest.Controllers
             }
         }
 
+        /// <summary>Inserts a new value</summary>
+        [HttpPost("value")]
+        public async Task<IActionResult> InsertValue([FromQuery] int fieldId, [FromBody] DataGridValueDto valueDto)
+        {
+            try
+            {
+                var value = valueDto.ToDataGridValue();
+                value.FieldId = fieldId;
+
+                await _dbContext.InsertValueAsync(value);
+                return Ok(valueDto);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
+        }
+
         [HttpDelete("value")]
         public async Task<IActionResult> DeleteValue([FromQuery] int valueId)
         {

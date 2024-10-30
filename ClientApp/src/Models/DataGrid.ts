@@ -30,9 +30,9 @@ export namespace Models {
         };
 
         export type DataGridValueDto = {
-            id: number,
+            id?: number,
             fieldId: number,
-            rowIndex: number,
+            rowIndex?: number,
             type: DataGridValueType,
 
             stringValue?: string,
