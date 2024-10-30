@@ -19,7 +19,7 @@ enum Stage {
     Exception,
 };
 
-function GridIdsList({
+function GridsList({
     gridDescriptors,
     onSelect,
 }: {
@@ -30,21 +30,22 @@ function GridIdsList({
 
     if (!gridDescriptors.length) {
         return (
-            <GridContainer>No available grid ids</GridContainer>
+            <GridContainer>No grids found</GridContainer>
         )
     }
 
     const options = gridDescriptors.map(descriptor => (
-        <Button
+        <CButton
             key={descriptor.id}
             disabled={selectedId == descriptor.id}
             onClick={() => {
                 setSelectedId(descriptor.id);
                 onSelect?.(descriptor.id)
             }}
+            style={{ width: 175 }}
         >
             {JSON.stringify(descriptor.name)}
-        </Button>
+        </CButton>
     ));
 
     return (
@@ -128,7 +129,7 @@ function validateValueDto(dtoValue: Models.Dto.DataGridValueDto, stringifiedValu
     };
 
     const validateEmail = () => {
-        const EMAIL_REGEX_STRING = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+        const EMAIL_REGEX_STRING = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/g;
 
         return EMAIL_REGEX_STRING.test(stringifiedValue!)
             ? resultOk() : resultErr(`${stringifiedValue} is not a valid email`);
@@ -288,7 +289,14 @@ function GridView({
         filterable: false,
         renderCell: (params: GridCellParams) => {
             return (
-                <CButton style={{ background: 'rgba(255, 0, 0, 0.25)' } onClick={() => console.log('TODO! Delete row')}>
+                <CButton
+                    style={{ background: 'rgba(255, 0, 0, 0.25)' }}
+                    onClick={() => {
+                        console.log('params:', params);
+                        CentaureaApi.deleteRow(gridDto.id!, Number.parseInt(`${params.id}`))
+                            // .then(() => window.location.reload());
+                    }}
+                >
                     Delete row
                 </CButton>
             )
@@ -443,7 +451,7 @@ export function Edit() {
 
     if (stage == Stage.SelectingGrid) {
         return (
-            <GridIdsList
+            <GridsList
                 gridDescriptors={gridDescriptors}
                 onSelect={fetchGridDto}
             />

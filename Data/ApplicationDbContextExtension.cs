@@ -1,14 +1,7 @@
-using System.Drawing;
-using System.Runtime.CompilerServices;
-using System.Security;
-using System.Text.RegularExpressions;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.Server.IIS.Core;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace CentaureaTest.Data
 {
@@ -34,7 +27,7 @@ namespace CentaureaTest.Data
         public static IEnumerable<DataGridValue> GetGridRow(this ApplicationDbContext dbContext, int gridId, int rowIndex)
         {
             var fields = dbContext.GetGridFields(gridId);
-            return dbContext.Values.Where(value => fields.Any(field => field.Id == value.FieldId));
+            return dbContext.Values.Where(value => value.RowIndex == rowIndex && fields.Any(field => field.Id == value.FieldId));
         }
 
         public static IEnumerable<(int RowIndex, DataGridRow Row)> GetGridRows(this ApplicationDbContext dbContext, int gridId)
@@ -82,7 +75,10 @@ namespace CentaureaTest.Data
                 return null;
             }
 
-            var rows = dbContext.GetGridRows(gridId).Select(row => row.Row);
+            var rows = dbContext
+                .GetGridRows(gridId)
+                .Select(row => row.Row)
+                .OrderBy(row => row.Items.FirstOrDefault()?.RowIndex);
 
             return new DataGrid(grid.Id, grid.Name, signature, rows);
         }
@@ -128,9 +124,17 @@ namespace CentaureaTest.Data
             }
         }
 
+        /// <remarks>See this method overloaded for FieldsTable</remarks>
+        public static async Task TryDeleteSelectOptionsAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            var field = await dbContext.Fields.FindAsync(fieldId)
+                ?? throw new Exception($"Field {fieldId} does not exist");
+
+            await dbContext.TryDeleteSelectOptionsAsync(field);
+        }
+
         /// <summary>
-        /// Iterates over field tables and deletes single/multi select options if the
-        /// field has a corresponding type
+        /// Iterates over field tables and deletes single/multi select options accordingly
         /// </summary>
         public static async Task TryDeleteSelectOptionsAsync(this ApplicationDbContext dbContext, IEnumerable<FieldsTable> fields)
         {
@@ -140,30 +144,65 @@ namespace CentaureaTest.Data
             }
         }
 
-        // TODO! Consider if I need to retain both delete field and delete fields
-        // or should the delete fields simply call delete field and if not,
-        // could could I reduce the code duplication
-        /// <summary>Deletes the field and dependent values</summary>
+        public static async Task DeleteFieldDependentValuesAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            var dependentValues = await dbContext.Values
+                .Where(value => value.FieldId == fieldId)
+                .ToListAsync();
+            
+            dbContext.Values.RemoveRange(dependentValues);
+            if (await dbContext.SaveChangesAsync() != dependentValues.Count)
+            {
+                throw new Exception("Some dependent fields were not deleted");
+            }
+        }
+
+        public static async Task DeleteFieldDependentValuesAsync(this ApplicationDbContext dbContext, IEnumerable<int> fieldIds)
+        {
+            foreach (var fieldId in fieldIds)
+            {
+                await dbContext.DeleteFieldDependentValuesAsync(fieldId);
+            }
+        }
+
+        public static async Task DeleteFieldDependentValuesAsync(this ApplicationDbContext dbContext, IEnumerable<FieldsTable> fields)
+        {
+            await dbContext.DeleteFieldDependentValuesAsync(fields.Select(field => field.Id));
+        }
+
+        // Deletes ref values referencing the field
+        public static async Task DeleteFieldRefsAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            var refs = await dbContext.Values
+                .OfType<DataGridRefValue>()
+                .Where(value => value.ReferencedFieldId == fieldId)
+                .ToListAsync();
+            
+            dbContext.Values.RemoveRange(refs);
+
+            if (await dbContext.SaveChangesAsync() != refs.Count)
+            {
+                throw new Exception("Failed to remove some reference values");
+            }
+        }
+
+        /// <summary>Deletes dependent values, refs and single / multi select options dependent on 'fieldId'</summary>
+        public static async Task DeleteFieldDependenciesAsync(this ApplicationDbContext dbContext, int fieldId)
+        {
+            await dbContext.DeleteFieldDependentValuesAsync(fieldId);
+            await dbContext.DeleteFieldRefsAsync(fieldId);
+            await dbContext.TryDeleteSelectOptionsAsync(fieldId);
+        }
+
+        /// <summary>Deletes the field and its dependencies</summary>
         /// <remarks>Not transactional</remarks>
         public static async Task DeleteFieldAsync(this ApplicationDbContext dbContext, int fieldId)
         {
             var field = dbContext.Fields.Find(fieldId)
                 ?? throw new Exception($"Field {fieldId} does not exist");
         
-            var values = dbContext.Values
-                .Where(value => value.FieldId == fieldId)
-                .ToList();
+            await dbContext.DeleteFieldDependenciesAsync(fieldId);
 
-            // If single select or multi select, remove corresponding options
-            // TODO! Do something about this code duplication
-            await dbContext.TryDeleteSelectOptionsAsync(field);
-
-            // Remove the dependent values
-            dbContext.Values.RemoveRange(values);
-            if (await dbContext.SaveChangesAsync() != values.Count)
-            {
-                throw new Exception("Failed to delete some values");
-            }
             // Remove the fields
             dbContext.Fields.Remove(field);
             if (await dbContext.SaveChangesAsync() != 1)
@@ -172,42 +211,20 @@ namespace CentaureaTest.Data
             }
         }
 
-        /// <summary>Deletes the fields and dependent values</summary>
+        /// <summary>Deletes the fields with given ids and dependent values</summary>
         /// <remarks>Not transactional</remarks>
         public static async Task DeleteFieldsAsync(this ApplicationDbContext dbContext, IEnumerable<int> fieldIds)
         {
-            var fields = dbContext.Fields
-                .Where(field => fieldIds.Contains(field.Id))
-                .ToList();
-            
-            await dbContext.DeleteFieldsAsync(fields);
+            foreach (var fieldId in fieldIds)
+            {
+                await dbContext.DeleteFieldAsync(fieldId);
+            }
         }
         /// <summary>Deletes the fields and dependent values</summary>
         /// <remarks>Not transactional</remarks>
         public static async Task DeleteFieldsAsync(this ApplicationDbContext dbContext, IEnumerable<FieldsTable> fields)
         {
-            // NB! Some redundancy here
-            var fieldIds = fields.Select(field => field.Id).ToList();
-
-            var values = dbContext.Values
-                .Where(value => fieldIds.Contains(value.FieldId))
-                .ToList();
-
-            // If the field is single or multi select, delete the corresponding choice tables
-            await dbContext.TryDeleteSelectOptionsAsync(fields);
-
-            // Remove the dependent values
-            dbContext.Values.RemoveRange(values);
-            if (await dbContext.SaveChangesAsync() != values.Count)
-            {
-                throw new Exception("Failed to delete some values");
-            }
-            // Remove the fields
-            dbContext.Fields.RemoveRange(fields);
-            if (await dbContext.SaveChangesAsync() != fieldIds.Count)
-            {
-                throw new Exception("Failed to delete some fields");
-            }
+            await dbContext.DeleteFieldsAsync(fields.Select(field => field.Id));
         }
 
         /// <summary>
@@ -270,99 +287,196 @@ namespace CentaureaTest.Data
             await dbContext.DeleteFieldsAsync(dependentFields);
         }
 
-        /// <summary>Validates all values including single and multi select</summary>
+        /// <remarks>Throws on validation failure, otherwise doesn't</remarks>
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        {
+            switch (value)
+            {
+                case DataGridRefValue refValue:
+                    await dbContext.ValidateValueAsync(refValue);
+                    break;
+
+                case DataGridSingleSelectValue singleSelectValue:
+                    await dbContext.ValidateValueAsync(singleSelectValue);
+                    break;
+
+                case DataGridMultiSelectValue multiSelectValue:
+                    await dbContext.ValidateValueAsync(multiSelectValue);
+                    break;
+            };
+        }
+
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridRefValue value)
+        {
+            if (await dbContext.Fields.FindAsync(value.ReferencedFieldId) is null)
+            {
+                throw new Exception($"Field {value.ReferencedFieldId} does not exist");
+            }
+        }
+
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridSingleSelectValue value)
+        {
+            if (await dbContext.SingleSelectOptions.FindAsync(value.OptionId) is null)
+            {
+                throw new Exception($"Single select option {value.OptionId} does not exist");
+            }
+        }
+
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
+        {
+            foreach (var optionId in value.OptionIds)
+            {
+                if (await dbContext.MultiSelectOptions.FindAsync(optionId) is null)
+                {
+                    throw new Exception($"Multi select option {optionId} does not exist");
+                }
+            }
+        }
+
+        public static async Task ValidateValues(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
+        {
+            foreach (var value in values)
+            {
+                await dbContext.ValidateValueAsync(value);
+            }
+        }
+
+        public static async Task ValidateValues(this ApplicationDbContext dbContext, IEnumerable<DataGridSingleSelectValue> values)
+        {
+            foreach (var value in values)
+            {
+                await dbContext.ValidateValueAsync(value);
+            }
+        }
+
+        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridMultiSelectValue> values)
+        {
+            foreach (var value in values)
+            {
+                await dbContext.ValidateMultiSelectValueAsync(value);
+            }
+        }
+
+        public static async Task ValidateMultiSelectValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
+        {
+            foreach (var optionId in value.OptionIds)
+            {
+                if (await dbContext.MultiSelectOptions.FindAsync(optionId) is null)
+                {
+                    throw new Exception($"Multi select option {optionId} does not exist");
+                }
+            }
+        }
+
+        /// <summary>Check if the value if special (ref, select) and if so, validates its validity</summary>
+        public static async Task ValidateSpecialValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        {
+            switch (value)
+            {
+                case DataGridRefValue refValue:
+                    await dbContext.ValidateValueAsync(refValue);
+                    break;
+                
+                case DataGridSingleSelectValue singleSelectValue:
+                    await dbContext.ValidateValueAsync(singleSelectValue);
+                    break;
+
+                case DataGridMultiSelectValue multiSelectValue:
+                    await dbContext.ValidateValueAsync(multiSelectValue);
+                    break;
+            }
+        }
+
+        public static async Task ValidateSpecialValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
+        {
+            foreach (var value in values)
+            {
+                await dbContext.ValidateSpecialValueAsync(value);
+            }
+        }
+
+        /// <summary>Validates all values including ref, single and multi select</summary>
         /// <remarks>Throws if the value is invalid (see 'ValidateValue' of signature for more)</remarks>
-        public static void ValidateValue(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
+        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
         {
             var (ok, message) = value.Validate(signature);
             if (!ok)
             {
                 throw new Exception(message);
             }
+
+            await dbContext.ValidateSpecialValueAsync(value);
+        }
+
+        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, IEnumerable<DataGridValue> values)
+        {
+            await dbContext.ValidateSpecialValuesAsync(values);
         }
 
         /// <summary>Validates all values including single and multi select</summary>
         /// <remarks>Throws if values are invalid</remarks>
-        public static async Task ValidateValues(this ApplicationDbContext dbContext, DataGridSignature signature, IEnumerable<DataGridValue> values)
+        public static async Task ValidateValuesAsync(this ApplicationDbContext dbContext, DataGridSignature signature, IEnumerable<DataGridValue> values)
         {
-            /// Validate signature constraints
             var (ok, message) = signature.ValidateValues(values);
             if (!ok)
             {
                 throw new Exception(message);
             }
 
-            /// Validate single and multi select
-            var singleSelectValues = values.OfType<DataGridSingleSelectValue>();
-            foreach (var value in singleSelectValues)
-            {
-                if (await dbContext.SingleSelectOptions.FindAsync(value.OptionId) is null)
-                {
-                    throw new Exception($"Single select option {value.OptionId} does not exist");
-                }
-            }
-
-            var multiSelectValues = values.OfType<DataGridMultiSelectValue>();
-            foreach (var value in multiSelectValues)
-            {
-                var missingOptionIds = value.OptionIds
-                    .Where(optionId => !dbContext.MultiSelectOptions.Any(option => option.Id == optionId));
-
-                if (missingOptionIds.Any())
-                {
-                    throw new Exception("Some multi select options do not exist");
-                }
-            }
+            await dbContext.ValidateValuesAsync(values);
         }
 
         /// <summary>Updates an existing value Throws on failure</summary>
         public static async Task UpdateValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
         {
-            var field = await dbContext.Fields.FindAsync(value.FieldId);
-
-            if (field is null)
-            {
-                throw new Exception($"Field {value.FieldId} does not exist");
-            }
-
+            var field = await dbContext.Fields.FindAsync(value.FieldId)
+                ?? throw new Exception($"Field {value.FieldId} does not exist");
+            
             var signature = field.ToDataGridFieldSignature();
-            dbContext.ValidateValue(signature, value);
+            await dbContext.ValidateValueAsync(signature, value);
 
+            var existingValue = await dbContext.Values
+                .Where(value => value.FieldId == value.FieldId && value.RowIndex == value.RowIndex)
+                .FirstOrDefaultAsync()
+                ?? throw new Exception($"Value at field {value.FieldId}, row {value.RowIndex} does not exist");
 
-            /// TODO! Lyuti costyl -- this must be rewritten
-            DataGridValue existingValue = value.Type switch
-            {
-                DataGridValueType.String => await dbContext.Values.OfType<DataGridStringValue>()
-                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex) as DataGridValue,
-
-                DataGridValueType.Numeric => await dbContext.Values.OfType<DataGridNumericValue>()
-                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
-
-                DataGridValueType.Regex => await dbContext.Values.OfType<DataGridRegexValue>()
-                    .FirstOrDefaultAsync(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex),
-
-                _ => throw new NotImplementedException($"Updating values of type {value.Type} is not implemented")
-            } ?? throw new Exception($"Value at field {value.FieldId}, row {value.RowIndex} not found");
-
-            // Update the existing value based on type-specific casting
+            // Kostyl
+            // TODO! Fix the kostyl
             switch (value)
             {
-                case DataGridStringValue stringValue:
-                    ((DataGridStringValue)existingValue).Value = stringValue.Value;
+                case DataGridStringValue castValue:
+                    ((DataGridStringValue)existingValue).Value = castValue.Value;
                     break;
 
-                case DataGridNumericValue numericValue:
-                    ((DataGridNumericValue)existingValue).Value = numericValue.Value;
+                case DataGridNumericValue castValue:
+                    ((DataGridNumericValue)existingValue).Value = castValue.Value;
                     break;
 
-                case DataGridRegexValue regexValue:
-                    ((DataGridRegexValue)existingValue).Value = regexValue.Value;
+                case DataGridRegexValue castValue:
+                    ((DataGridRegexValue)existingValue).Value = castValue.Value;
+                    break;
+
+                case DataGridEmailValue castValue:
+                    ((DataGridEmailValue)existingValue).Value = castValue.Value;
+                    break;
+
+                case DataGridRefValue castValue:
+                    ((DataGridRefValue)existingValue).ReferencedFieldId = castValue.ReferencedFieldId;
+                    break;
+
+                case DataGridSingleSelectValue castValue:
+                    ((DataGridSingleSelectValue)existingValue).OptionId = castValue.OptionId;
+                    break;
+
+                case DataGridMultiSelectValue castValue:
+                    ((DataGridMultiSelectValue)existingValue).OptionIds = castValue.OptionIds;
                     break;
 
                 default:
                     throw new NotImplementedException($"Updating values of type {value.Type} is not implemented");
             }
 
+            // NB: doesn't check that the update was succesfull
             await dbContext.SaveChangesAsync();
         }
 
@@ -392,7 +506,7 @@ namespace CentaureaTest.Data
             }
 
             // Validate the values against the signature
-            await dbContext.ValidateValues(signature, values);
+            await dbContext.ValidateValuesAsync(signature, values);
 
             if (values.Count == 0)
             {

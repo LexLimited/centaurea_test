@@ -79,16 +79,16 @@ namespace CentaureaTest.Models
 
     public class DataGridEmailValue : DataGridValue
     {
-        public static readonly string EMAIL_REGEX = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+        public static readonly string EMAIL_REGEX = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";
 
         public string Value { get; set; }
 
         public DataGridEmailValue(string value)
         {
-            if (!Validate(value))
-            {
-                throw new Exception("DataGridEmailValue passed an invalid email");
-            }
+            // if (!Validate(value))
+            // {
+            //     throw new Exception("DataGridEmailValue passed an invalid email");
+            // }
             
             Value = value;
             Type = DataGridValueType.Email;

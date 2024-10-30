@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Reflection.Metadata.Ecma335;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
@@ -69,6 +70,20 @@ namespace CentaureaTest.Controllers
             return Ok(gridId);
         }
 
+        /// <summary>Renames an existing grid</summary>
+        [HttpPut("/grid/{gridId}/rename")]
+        public async Task<IActionResult> RenameGrid(int gridId, [FromQuery, Required] string newName)
+        {
+            var grid = await _dbContext.Grids.FindAsync(gridId);
+            if (grid is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            grid.Name = newName;
+            return await _dbContext.SaveChangesAsync() == 1 ? Ok(newName) : Problem("Failed to update the grid's name");
+        }
+
         /// <summary>Adds a new column to an existing table</summary>
         [HttpPost("{gridId}/field")]
         public async Task<IActionResult> AddField(int gridId, [FromBody] DataGridFieldSignatureDto fieldSignatureDto)
@@ -98,8 +113,8 @@ namespace CentaureaTest.Controllers
         }
 
         /// <summary>Sets a single value (cell) within the field</summary>
-        [HttpPut("field/{fieldId}/value")]
-        public async Task<IActionResult> UpdateFieldValue([FromRoute] int fieldId, [FromBody] DataGridValueDto valueDto)
+        [HttpPut("value")]
+        public async Task<IActionResult> UpdateValue([FromQuery] int fieldId, [FromBody] DataGridValueDto valueDto)
         {
             try
             {
@@ -115,10 +130,24 @@ namespace CentaureaTest.Controllers
             }
         }
 
+        [HttpDelete("value")]
+        public async Task<IActionResult> DeleteValue([FromQuery] int valueId)
+        {
+            var value = await _dbContext.Values.FindAsync(valueId);
+            if (value is null)
+            {
+                return BadRequest($"Value {valueId} does not exist");
+            }
+
+            _dbContext.Remove(value);
+            return await _dbContext.SaveChangesAsync() == 1
+                ? Ok(valueId) : Problem("Failed to delete a value");
+        }
+
         // TODO! Move newName to query parameters
         /// <summary>Renames an existing field</summary>
         [HttpPut("field/{fieldId}/rename")]
-        public async Task<IActionResult> RenameField(int fieldId, [FromBody, Required] string newName)
+        public async Task<IActionResult> RenameField(int fieldId, [FromQuery, Required] string newName)
         {
             var field = await _dbContext.Fields.FindAsync(fieldId);
             if (field is null)

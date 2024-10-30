@@ -27,11 +27,11 @@ export namespace CentaureaApi {
     );
 
     export async function getGridDescriptors() {
-        return await axiosInstance.get<Models.Dto.DataGridDescriptor[]>('');
+        return axiosInstance.get<Models.Dto.DataGridDescriptor[]>('');
     }
 
     export async function getGrid(gridId: number) {
-        return await axiosInstance.get<Models.Dto.DataGridDto>(`grid?gridId=${gridId}`);
+        return axiosInstance.get<Models.Dto.DataGridDto>(`grid?gridId=${gridId}`);
     }
 
     export type CentaureaApiPutValueHandleExtraParams = {
@@ -43,27 +43,23 @@ export namespace CentaureaApi {
         dto.fieldId = params.fieldId || dto.fieldId;
         dto.rowIndex = params.rowIndex || dto.rowIndex;
 
-        return await axiosInstance.put<Models.Dto.DataGridValueDto>(`/field/${dto.fieldId}/value`, dto);
+        return axiosInstance.put<Models.Dto.DataGridValueDto>(`/value?fieldId=${dto.fieldId}`, dto);
     }
 
     export async function deleteGrid(gridId: number) {
-        return await axiosInstance.delete<number>(`/grid/${gridId}`);
+        return axiosInstance.delete<number>(`/grid/${gridId}`);
     }
 
     export async function renameField(fieldId: number, newName: string) {
-        return await axiosInstance.put<string>(
-            `/field/${fieldId}/rename`,
-            `"${newName}"`,
-            {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
+        return axiosInstance.put<string>(`/field/${fieldId}/rename?newName=${newName}`);
     }
 
     export async function deleteField(fieldId: number) {
-        return await axiosInstance.delete<number>(`/field/${fieldId}`);
+        return axiosInstance.delete<number>(`/field/${fieldId}`);
+    }
+
+    export async function deleteRow(gridId: number, rowIndex: number) {
+        return axiosInstance.delete<number[]>(`/row/${gridId}?rowIndex=${rowIndex}`);
     }
 
 }
