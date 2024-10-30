@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
-using CentaureaTest.Auth;
 using CentaureaTest.Converters;
 using CentaureaTest.Data;
 using CentaureaTest.Middlewares;
+using CentaureaTest.Models.Auth;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -49,13 +49,11 @@ builder.Services
 
 builder.Services.ConfigureApplicationCookie(options =>
     {
-        options.AccessDeniedPath = "/accessdenied";
         options.Cookie.HttpOnly = true;
         options.Cookie.Name = "CentaureaCookie";
         options.Cookie.Path = "/";
         options.Cookie.SameSite = SameSiteMode.Strict;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
-        options.LoginPath = "/auth/login";
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.SlidingExpiration = true;
     });
@@ -63,9 +61,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/auth/login";
-        options.AccessDeniedPath = "/accessdenied";
-        options.LogoutPath = "/auth/logout";
+        options.LoginPath = "/app/auth/login";
+        options.AccessDeniedPath = "/app/accessdenied";
+        options.LogoutPath = "/app/auth/logout";
     });
 
 builder.Services.AddLogging();

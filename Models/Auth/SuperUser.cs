@@ -1,3 +1,5 @@
+using CentaureaTest.Models.Auth;
+
 namespace CentaureaTest.Auth
 {
 
@@ -12,7 +14,11 @@ namespace CentaureaTest.Auth
 
         public static ApplicationUser ToApplciationUser()
         {
-            return new ApplicationUser(USERNAME, Role.Superuser);
+            return new ApplicationUser
+                {
+                    UserName = USERNAME,
+                    Role = Role.Superuser,
+                };
         }
     }
 

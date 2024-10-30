@@ -3,8 +3,15 @@ import axios from 'axios';
 
 export namespace CentaureaApi {
 
-    export const API_ENDPOINT = "https://localhost:8080/api";
+    export const BASE_ENDPOINT = "https://localhost:8080";
+    export const API_ENDPOINT = `${BASE_ENDPOINT}/api`;
+    export const AUTH_ENDPOINT = `${BASE_ENDPOINT}/auth`
     export const DATA_GRID_API_ENDPOINT = `${API_ENDPOINT}/datagrid`;
+
+    const authInstance = axios.create({
+        baseURL: `${AUTH_ENDPOINT}`,
+        timeout: 3000,
+    });
 
     const axiosInstance = axios.create({
         baseURL: DATA_GRID_API_ENDPOINT,
@@ -26,6 +33,20 @@ export namespace CentaureaApi {
         }
     );
 
+    authInstance.interceptors.request.use(config => {
+        console.log('[Info] Axios request:', config);
+        return config;
+    });
+
+    authInstance.interceptors.response.use(
+        res => {
+            console.log('[Info] Axios response:', res);
+            return res;
+        },
+        err => {
+            console.error('[Error] Axios response:'), err;
+        }
+    );
     export async function getGridDescriptors() {
         return axiosInstance.get<Models.Dto.DataGridDescriptor[]>('');
     }
@@ -71,6 +92,10 @@ export namespace CentaureaApi {
 
     export async function deleteRow(gridId: number, rowIndex: number) {
         return axiosInstance.delete<number[]>(`/row/${gridId}?rowIndex=${rowIndex}`);
+    }
+
+    export async function logIn(logInModel: { username: string, password: string }) {
+        return authInstance.post(`/login`, logInModel);
     }
 
 }

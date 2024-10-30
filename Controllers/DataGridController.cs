@@ -1,8 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Data.Common;
-using System.Reflection.Metadata.Ecma335;
 using CentaureaTest.Data;
-using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +9,7 @@ namespace CentaureaTest.Controllers
 
     [ApiController]
     [Route("api/datagrid")]
+    [Authorize(Roles = "User, Admin, Superuser")]
     public sealed class DataGridController : Controller
     {
         private readonly ApplicationDbContext _dbContext;
@@ -40,7 +38,7 @@ namespace CentaureaTest.Controllers
         }
         
         /// <summary>Creates a new grid</summary>
-        // [Authorize(Roles = "Admin, SuperUser")]
+        // [Authorize(Roles = "Admin, Superuser")]
         [HttpPost("grid")]
         public async Task<IActionResult> CreateGrid([FromBody] CreateDataGridDto gridDto)
         {

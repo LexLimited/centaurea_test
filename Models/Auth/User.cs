@@ -1,8 +1,12 @@
-namespace CentaureaTest.Models
+using Microsoft.AspNetCore.Identity;
+
+namespace CentaureaTest.Models.Auth
 {
-    public sealed class User
+
+    public sealed class ApplicationUser : IdentityUser
     {
-        public int Id { get; private set; }
+        public Role Role { get; set; }
+        public string? Password { get; set; }
     }
 
 }

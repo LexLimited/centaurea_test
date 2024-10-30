@@ -1,5 +1,6 @@
 using System.Text;
 using CentaureaTest.Auth;
+using CentaureaTest.Models.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;

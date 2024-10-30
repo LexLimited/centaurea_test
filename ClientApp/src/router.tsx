@@ -3,6 +3,7 @@ import { HomeRoutes } from "./views/Home/routes";
 import { Layout } from "./views/Layout";
 import { SettingsRoutes } from "./views/Settings/routes";
 import { DataGridRoutes } from "./views/DataGrid/routes";
+import { AuthRoutes } from "./views/Auth/routes";
 
 export default createBrowserRouter([
     {
@@ -10,6 +11,7 @@ export default createBrowserRouter([
         element: <Layout />,
         children: [
             ...DataGridRoutes,
+            ...AuthRoutes,
             ...HomeRoutes,
             ...SettingsRoutes,
         ]
