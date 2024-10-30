@@ -199,7 +199,12 @@ function GridView({
 
     const [errorMessage, setErrorMessage] = React.useState<string>();
 
+    const [rows, setRows] = React.useState<CentaureaGridRowModel[]>(dtoRows.map(mapDtoRowToGridRow));
+
+    const [columns, setColumns] = React.useState<GridColDef<CentaureaGridRowModel>[]>(dtoFields.map(mapDtoFieldsToGridColumn));
+
     const editedRowSnapshot = React.useRef<CentaureaGridRowModel>();
+
     const editedColumnId = React.useRef<number>();
 
     const FIELD_IDS = dtoFields.map(dtoField => dtoField.id);
@@ -218,17 +223,30 @@ function GridView({
         };
     }
 
+    function calculateMaxRowIndex(): number | undefined {
+        let ret = -Infinity;
+        for (let dtoRow of dtoRows)
+        {
+            const maxIndex = !!dtoRow.items.length ? Math.max(...dtoRow.items.map(item => item.rowIndex!)) : -Infinity;
+            ret = Math.max(ret, maxIndex);
+        }
+
+        return Number.isFinite(ret) ? ret : undefined;
+    }
+
     function mapDtoRowToGridRow(dtoRow: Models.Dto.DataGridRowDto, idx: number): CentaureaGridRowModel {
         // Id is the row index
         // If the row is virtual (doesn't exist in db), the index is undefined
         // Otherwise it has an item and any item's rowIndex is the index
-        const id = dtoRow.items[0]?.rowIndex;
-        const ret: CentaureaGridRowModel = { id };
+        let id = dtoRow.items[0]?.rowIndex;
 
-        // for (let fieldId of FIELD_IDS) {
-        //     const dtoValue = dtoRow.items.find(item => item.fieldId == fieldId);
-        //     ret[fieldId] = extractValueDtoValue(dtoValue);
-        // }
+        // If the index is undefined, increment max id
+        if (id == undefined) {
+            // If the max row index is undefined, there are no values is the grid, default to 0
+            id = calculateMaxRowIndex() || 0;
+        }
+
+        const ret: CentaureaGridRowModel = { id };
 
         for (let dtoField of dtoFields) {
             const fieldId = dtoField.id;
@@ -243,12 +261,6 @@ function GridView({
 
         return ret;
     }
-
-    const rows = dtoRows.map(mapDtoRowToGridRow);
-    const columns = dtoFields.map(mapDtoFieldsToGridColumn);
-
-    console.log('dtoRows:', dtoRows);
-    console.log('rows:', rows);
 
     function renderColumnMenu(props?: GridColumnMenuProps & ColumnMenuPropsOverrides) {
         const [renamingField, setRenamingField] = React.useState<boolean>(false);
@@ -389,12 +401,6 @@ function GridView({
                         } catch (e) {
                             console.error('Api request failed:', e);
                         }
-
-                        // if (editedRowSnapshot == undefined) {
-                        //     throw "editedRowSnapshot must be set before editing to roll back the grid's state";
-                        // }
-
-                        // return editedRowSnapshot.current || editedRowSnapshot!;
                     }
 
                     const validationResult = validateValueDto(valueDto);
@@ -428,7 +434,7 @@ function GridView({
             <CButton onClick={() => console.log('TODO! Add new column')}>
                 Add New Column
             </CButton>
-            <CButton onClick={() => console.log('TODO! Add new row')}>
+            <CButton onClick={() => { setRows([...rows, { id: (calculateMaxRowIndex() || 0) + 1 }]) }}>
                 Add New Row
             </CButton>
             <CButton
