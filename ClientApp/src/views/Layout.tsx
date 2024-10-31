@@ -1,9 +1,10 @@
-import { Button, Divider, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, makeStyles, tokens } from "@fluentui/react-components";
-import { Link, Outlet } from "react-router-dom";
+import { Divider, Menu, MenuItem, MenuList, MenuPopover, MenuTrigger, makeStyles, tokens } from "@fluentui/react-components";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import { I18nLocales, useI18n } from "@/components/I18nContext";
 import { Translate24Filled } from "@fluentui/react-icons";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { Button, Typography } from "@mui/material";
 
 const useStyles = makeStyles({
     Root: {
@@ -55,17 +56,39 @@ const NavigationList = () => {
 export const Layout = () => {
     const styles = useStyles();
 
-    const { authStatus } = useContext(AuthContext);
+    const { authStatus, logOut } = useContext(AuthContext);
+
+    const navigate = useNavigate();
 
     return (
         <div className={`${styles.Root} col`}>
             <div className={`${styles.Header} row align-center-1 px-5`}>
-                <div style={{ marginRight: 36, color: 'blue' }}>
-                    <h2 title={JSON.stringify(authStatus, null, 2)}>{authStatus.username || "Unauthenticated"}</h2>
+                <div
+                    style={{ marginRight: 36, color: 'blue', cursor: 'pointer' }}
+                    onClick={() => navigate('/')}
+                >
+                    <Typography
+                        variant="h5"
+                        gutterBottom
+                        title={JSON.stringify(authStatus, null, 2)}
+                    >
+                        {authStatus.username || "Unauthenticated"}
+                    </Typography>
                 </div>
                 <NavigationList />
                 <div className="grow"></div>
-                <LocalePicker />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    size="large"
+                    style={{ width: 85, height: 45 }}
+                    onClick={async () => {
+                        await logOut(() => navigate('/'));
+                    }}
+                >
+                        Logout
+                </Button>
                 <Divider className="no-grow mx-1" vertical />
             </div>
             <div className={`${styles.Body} grow m-3`}>

@@ -108,7 +108,11 @@ export namespace CentaureaApi {
     };
 
     export async function logIn(logInModel: LogInModel) {
-        return authInstance.post<LogInResult>(`/login`, logInModel);
+        return authInstance.post<LogInResult>('/login', logInModel);
+    }
+
+    export async function logOut() {
+        return authInstance.post('/logout');
     }
 
     export async function getUsers() {

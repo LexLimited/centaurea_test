@@ -48,7 +48,7 @@ export const LogIn = () => {
         <Container maxWidth="xs">
             {
                 redirectReason
-                    ? <Typography color='red' variant="h4" gutterBottom>{redirectReason}</Typography>
+                    ? <Typography color='red' variant="h5" gutterBottom>{redirectReason}</Typography>
                     : null
             }
             <Typography variant="h4" gutterBottom>Log In</Typography>

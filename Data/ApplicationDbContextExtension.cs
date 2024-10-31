@@ -346,9 +346,12 @@ namespace CentaureaTest.Data
         /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridSingleSelectValue value)
         {
-            if (await dbContext.SingleSelectOptions.FindAsync(value.OptionId) is null)
+            var option = await dbContext.SingleSelectOptions.FindAsync(value.OptionId)
+                ?? throw new Exception($"Single select option {value.OptionId} does not exist");
+        
+            if (option.FieldId != value.FieldId)
             {
-                throw new Exception($"Single select option {value.OptionId} does not exist");
+                throw new Exception($"Single select option {option.Id} does not belong to field {value.FieldId}");
             }
         }
 
@@ -358,9 +361,12 @@ namespace CentaureaTest.Data
         {
             foreach (var optionId in value.OptionIds)
             {
-                if (await dbContext.MultiSelectOptions.FindAsync(optionId) is null)
+                var option = await dbContext.MultiSelectOptions.FindAsync(optionId)
+                    ?? throw new Exception($"Multi select option {optionId} does not exist");
+            
+                if (option.FieldId != value.FieldId)
                 {
-                    throw new Exception($"Multi select option {optionId} does not exist");
+                    throw new Exception($"Multi select option {option.Id} does not belong to field {value.FieldId}");
                 }
             }
         }
@@ -557,23 +563,6 @@ namespace CentaureaTest.Data
 
             return dbContext.GetGridRowValues(grid.Id, rowIndex)
                 .FirstOrDefault(value => value.RowIndex == rowIndex);
-        }
-
-        /// <summary>Change an existing value</summary>
-        public static void PutValue(this ApplicationDbContext dbContext, int fieldId, int rowIndex, DataGridValue newValue)
-        {
-            var value = dbContext.GetValue(fieldId, rowIndex)
-                ?? throw new Exception($"Value in field {fieldId} in row {rowIndex} does not exist");
-            
-            if (value.Type != newValue.Type)
-            {
-                throw new Exception($"Invalid value type {newValue.Type}, expected: {value.Type}");
-            }
-
-            dbContext.Values.Add(newValue);
-            dbContext.SaveChanges();
-
-            throw new NotImplementedException("PutValue extension method on ApplicationDbContext is not implemented");
         }
 
         /// <summary>Inserts options into single select table</summary>
