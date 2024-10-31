@@ -107,6 +107,7 @@ namespace CentaureaTest.Models
         }
 
         [HttpPost("logout")]
+        [Authorize(Roles = "User, Admin, Superuser")]
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();

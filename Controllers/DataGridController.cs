@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.Eventing.Reader;
 using CentaureaTest.Data;
 using CentaureaTest.Models.Auth;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,11 +18,17 @@ namespace CentaureaTest.Controllers
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly ILogger<DataGridController> _logger;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public DataGridController(ApplicationDbContext dbContext, ILogger<DataGridController> logger)
+        public DataGridController(
+            ApplicationDbContext dbContext,
+            ILogger<DataGridController> logger,
+            UserManager<ApplicationUser> userManager
+        )
         {
             _dbContext = dbContext;
             _logger = logger;
+            _userManager = userManager;
         }
 
         /// <summary>Returns a list of existing grid</summary>
@@ -56,8 +64,14 @@ namespace CentaureaTest.Controllers
         /// <summary>Returns an existing grid</summary>
         // [Authorize]
         [HttpGet("grid")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetGridById([FromQuery] int gridId)
         {
+            if (!IsUserAllowedGrid(gridId))
+            {
+                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            }
+
             var grid = await _dbContext.GetDataGridAsync(gridId);
             return grid is null ? new NotFoundResult() : Ok(grid);
         }
@@ -110,8 +124,14 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Adds a new column to an existing table</summary>
         [HttpPost("grid/{gridId}/field")]
+        [AllowAnonymous]
         public async Task<IActionResult> AddField(int gridId, [FromBody] DataGridFieldSignatureDto fieldSignatureDto)
         {
+            if (!IsUserAllowedGrid(gridId))
+            {
+                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            }
+
             var fieldSignature = fieldSignatureDto.ToDataGridFieldSignature();
             if (fieldSignature is null)
             {
@@ -132,8 +152,15 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Sets a single value (cell) within the field</summary>
         [HttpPut("value")]
+        [AllowAnonymous]
         public async Task<IActionResult> UpdateValue([FromQuery] int fieldId, [FromBody] DataGridValueDto valueDto)
         {
+            // TODO! Check if the value belongs to an allowed grid
+            // if (!IsUserAllowedGrid(gridId))
+            // {
+            //     return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            // }
+
             try
             {
                 var value = valueDto.ToDataGridValue();
@@ -150,8 +177,11 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Inserts a new value</summary>
         [HttpPost("value")]
+        [AllowAnonymous]
         public async Task<IActionResult> InsertValue([FromQuery] int fieldId, [FromBody] DataGridValueDto valueDto)
         {
+            // TODO! Check if the value belongs to an allowed grid
+
             try
             {
                 var value = valueDto.ToDataGridValue();
@@ -167,6 +197,7 @@ namespace CentaureaTest.Controllers
         }
 
         [HttpDelete("value")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeleteValue([FromQuery] int valueId)
         {
             var value = await _dbContext.Values.FindAsync(valueId);
@@ -183,8 +214,14 @@ namespace CentaureaTest.Controllers
         /// TODO! Unfinished and incorrect, rewrite it
         /// <summary>Updates an existing field</summary>
         [HttpPut("grid/{gridId}/field")]
+        [AllowAnonymous]
         public async Task<IActionResult> UpdateField(int gridId, [FromQuery, Required] int fieldId, [FromBody, Required] DataGridFieldSignatureDto fieldDto)
         {
+            if (!IsUserAllowedGrid(gridId))
+            {
+                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            }
+
             var field = await _dbContext.Fields.FindAsync(fieldId);
             if (field is null)
             {
@@ -214,8 +251,11 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Renames an existing field</summary>
         [HttpPut("field/{fieldId}/rename")]
+        [AllowAnonymous]
         public async Task<IActionResult> RenameField(int fieldId, [FromQuery, Required] string newName)
         {
+            // TODO! Check if the field belongs to an allowed grid
+
             var field = await _dbContext.Fields.FindAsync(fieldId);
             if (field is null)
             {
@@ -229,8 +269,11 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Deletes a field from a grid</summary>
         [HttpDelete("field/{fieldId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeleteField(int fieldId)
         {
+            // TODO! Check if the field belongs to an allowed grid
+
             var transaction = await _dbContext.Database.BeginTransactionAsync();
             try
             {
@@ -248,8 +291,11 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Deletes a list of fields from a grid</summary>
         [HttpDelete("fields")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeleteFields([FromBody] List<int> fieldIds)
         {
+            // TODO! Check if the field belongs to an allowed grid
+
             if (fieldIds is null)
             {
                 return BadRequest("Expected property 'fieldIds'");
@@ -272,8 +318,14 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Adds a new row to the grid</summary>
         [HttpPost("row/{gridId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> AddRow(int gridId, [FromBody] List<DataGridValueDto> valueDtos)
         {
+            if (!IsUserAllowedGrid(gridId))
+            {
+                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            }
+
             try
             {
                 await _dbContext.InsertRowAsync(gridId, valueDtos.Select(valueDto => valueDto.ToDataGridValue()));
@@ -288,8 +340,14 @@ namespace CentaureaTest.Controllers
 
         /// <summary>Deletes a row by gridId and rowIndex</summary>
         [HttpDelete("row/{gridId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> DeleteRow(int gridId, [FromQuery, Required] int rowIndex)
         {
+            if (!IsUserAllowedGrid(gridId))
+            {
+                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+            }
+
             var grid = await _dbContext.Grids.FindAsync(gridId);
             if (grid is null)
             {
@@ -312,14 +370,47 @@ namespace CentaureaTest.Controllers
                 return BadRequest($"Grid {gridId} does not exist");
             }
 
-            await _dbContext.GridPermssions.AddRangeAsync(allowedUsers.Select(username => new GridPermission
+            var permissions = allowedUsers.Select(username => new GridPermission
+            {
+                GridId = gridId,
+                UserName = username,
+            });
+
+            foreach (var permission in permissions)
+            {
+                if (await _userManager.FindByNameAsync(permission.UserName) is null)
                 {
-                    GridId = gridId,
-                    UserName = username,
-                }));
+                    return BadRequest($"User {permission.UserName} does not exist");
+                }
+            }
+
+            await _dbContext.AddRangeAsync(permissions);
 
             return await _dbContext.SaveChangesAsync() == allowedUsers.Count
                 ? Ok(allowedUsers) : Problem("Failed to set some users");
+        }
+
+        private bool IsUserAllowedGrid(int gridId)
+        {
+            if (User.IsInRole("Admin") || User.IsInRole("Superuser"))
+            {
+                return true;
+            }
+
+            if (User.IsInRole("User"))
+            {
+                var username = User.Identity?.Name;
+                if (username is null)
+                {
+                    return false;
+                }
+
+                return _dbContext.GridPermssions
+                    .Where(permission => permission.GridId == gridId && permission.UserName == username)
+                    .Any();
+            }
+
+            return false;
         }
     }
 

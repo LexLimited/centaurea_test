@@ -77,7 +77,7 @@ export const Layout = () => {
                 </div>
                 <NavigationList />
                 <div className="grow"></div>
-                <Button
+                {/* <Button
                     variant="contained"
                     color="primary"
                     fullWidth
@@ -88,7 +88,7 @@ export const Layout = () => {
                     }}
                 >
                         Logout
-                </Button>
+                </Button> */}
                 <Divider className="no-grow mx-1" vertical />
             </div>
             <div className={`${styles.Body} grow m-3`}>

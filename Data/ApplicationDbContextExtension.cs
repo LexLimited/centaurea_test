@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.Xml;
 using centaureatest.Migrations.AuthDb;
 using CentaureaTest.Models;
@@ -658,6 +660,23 @@ namespace CentaureaTest.Data
             }
         }
 
+        public static async Task ValidateGridExistsAsync(this ApplicationDbContext dbContext, int gridId)
+        {
+            if (await dbContext.Grids.FindAsync(gridId) is null)
+            {
+                throw new Exception($"Grid {gridId} does not exist");
+            }
+        }
+
+        public static async Task ValidateFieldsAsync(this ApplicationDbContext dbContext, IEnumerable<FieldsTable> fields)
+        {
+            // Validate ref fields
+            foreach (var refField in fields.OfType<RefFieldsTable>())
+            {
+                await dbContext.ValidateGridExistsAsync(refField.GridId);
+            }
+        }
+
         /// <summary>Inserts grids, fields, options and values base on the dto</summary>
         /// <remarks>Throws on failure</remarks>
         public static async Task CreateTablesFromDtoTransactionAsync(this ApplicationDbContext dbContext, CreateDataGridDto gridDto)
@@ -686,6 +705,7 @@ namespace CentaureaTest.Data
                     fieldTable.GridId = gridId;
                 }
 
+                await dbContext.ValidateFieldsAsync(fieldTables);
                 dbContext.AddRange(fieldTables);
 
                 // Save changes and get the generated field IDs

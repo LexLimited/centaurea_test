@@ -12,6 +12,8 @@ export function Create() {
 
   const [openDialog, setOpenDialog] = useState<boolean>(false); // Manages dialog visibility
   
+  const [refOptions, setRefOptions] = useState<number[]>([]);
+
   const [newField, setNewColumn] = useState<{
     name: string,
     type: Models.DataGridValueType,
@@ -21,6 +23,13 @@ export function Create() {
     type: '',
     options: null,
   }); // Manages new column details
+
+  React.useEffect(() => {
+    if (newField.type == 'Ref') {
+      CentaureaApi.getGridDescriptors()
+        .then(res => setRefOptions(res.data.map(descriptor => descriptor.id)));
+    }
+  }, [newField.type]);
 
   // Function to map column definitions to DataGrid field signature DTOs
   function createDataGridSignatureFieldDtos(): Models.Dto.DataGridFieldSignatureDto[] {
@@ -97,13 +106,19 @@ export function Create() {
         );
       case 'Ref':
         return (
-          <TextField
-            label="Reference ID (int)"
+          <Select
+            label="Select Reference ID"
             fullWidth
             margin="dense"
             value={newField.options || ""}
-            onChange={(e) => setNewColumn({ ...newField, options: parseInt(e.target.value) })}
-          />
+            onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
+          >
+            {refOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
         );
       case 'SingleSelect':
       case 'MultiSelect':

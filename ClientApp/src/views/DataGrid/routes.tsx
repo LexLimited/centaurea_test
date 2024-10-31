@@ -2,7 +2,7 @@ import { RouteObject } from "react-router-dom";
 import { Index } from "./Index";
 import { Create } from "./Create";
 import { Edit } from "./Edit";
-import { ProtectedRoute } from "@/ProtectedRouter";
+import { ProtectedRoute } from "@/ProtectedRoute";
 
 export const DataGridRoutes = [
     {
@@ -25,12 +25,16 @@ export const DataGridRoutes = [
     },
     {
         path: "datagridedit",
-        element: <Edit />,
+        element: (
+            <ProtectedRoute requiredAuthority='user' reasonDenied="Requested page requires authentication">
+                <Edit />
+            </ProtectedRoute>
+        ),
     },
     {
         path: "datagridcreate",
         element: (
-            <ProtectedRoute>
+            <ProtectedRoute requiredAuthority='privileged' reasonDenied="Requested page requires privileged access">
                 <Create />
             </ProtectedRoute>
         ),
