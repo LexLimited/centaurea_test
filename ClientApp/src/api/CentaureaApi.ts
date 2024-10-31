@@ -55,6 +55,10 @@ export namespace CentaureaApi {
         return axiosInstance.get<Models.Dto.DataGridDto>(`grid?gridId=${gridId}`);
     }
 
+    export async function getGridFieldSignatures(gridId: number) {
+        return axiosInstance.get<Models.Dto.DataGridFieldSignatureDto[]>(`grid/${gridId}/field_signatures`);
+    }
+
     export async function createGrid(gridDto: Models.Dto.DataGridDto) {
         return axiosInstance.post(`grid`, gridDto);
     }
@@ -129,6 +133,14 @@ export namespace CentaureaApi {
 
     export async function setGridPermissions(gridId: number, allowedUser: string[]) {
         return axiosInstance.post(`/grid/${gridId}/permissions`, allowedUser);
+    }
+
+    export async function getFieldSingleSelectOptions(fieldId: number) {
+        return axiosInstance.get<Models.SelectOption[]>(`/field/${fieldId}/options/single_select`);
+    }
+    
+    export async function getFieldMultiSelectOptions(fieldId: number) {
+        return axiosInstance.get<Models.SelectOption[]>(`/field/${fieldId}/options/multi_select`);
     }
 
     export type WhoAmIResult = {

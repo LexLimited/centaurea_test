@@ -95,9 +95,6 @@ namespace CentaureaTest.Models
             Type = DataGridValueType.Email;
         }
 
-        /// <summary>
-        /// Validate whether "value" is a valid email address
-        /// </summary>
         static bool Validate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -108,9 +105,6 @@ namespace CentaureaTest.Models
             return Regex.IsMatch(value, EMAIL_REGEX);
         }
 
-        /// <remarks>
-        /// Email value with an invalid email cannot be constructed
-        /// </remarks>
         public override DataGridValueValidationResult Validate(DataGridFieldSignature signature)
         {
             if (Type != signature.Type)
@@ -118,7 +112,6 @@ namespace CentaureaTest.Models
                 return MismatchedTypesValidationError(Type, signature.Type);
             }
 
-            // NB! Redundant
             if (!Validate(Value))
             {
                 return ValidationError("Email value is not a valid email");

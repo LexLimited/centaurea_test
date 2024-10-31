@@ -61,7 +61,7 @@ namespace CentaureaTest.Converters
                     break;
 
                 case DataGridSingleSelectValue singleSelectValue:
-                    writer.WritePropertyName("optiondId");
+                    writer.WritePropertyName("optionId");
                     writer.WriteNumberValue(singleSelectValue.OptionId);
                     break;
 

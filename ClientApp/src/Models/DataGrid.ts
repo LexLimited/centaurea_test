@@ -64,4 +64,10 @@ export namespace Models {
         userName: string,
     };
 
+    export type SelectOption = {
+        id: number,
+        fieldId: number,
+        option: string,
+    };
+
 } // Models

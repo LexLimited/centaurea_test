@@ -5,7 +5,7 @@ namespace CentaureaTest.Models
 
     public sealed class DataGridRow
     {
-        public List<DataGridValue> Items { get; private set; }
+        public List<DataGridValue> Items { get; set; }
 
         public DataGridRow(IEnumerable<DataGridValue> items)
         {

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.Eventing.Reader;
 using CentaureaTest.Data;
+using CentaureaTest.Models;
 using CentaureaTest.Models.Auth;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Authorization;
@@ -69,7 +70,7 @@ namespace CentaureaTest.Controllers
         {
             if (!IsUserAllowedGrid(gridId))
             {
-                return Unauthorized($"You're not allowed the access to grid ${gridId}");
+                return Unauthorized($"You're not allowed the access to grid {gridId}");
             }
 
             var grid = await _dbContext.GetDataGridAsync(gridId);
@@ -445,6 +446,65 @@ namespace CentaureaTest.Controllers
 
             return await _dbContext.SaveChangesAsync() == allowedUsers.Count
                 ? Ok(allowedUsers) : Problem("Failed to set some users");
+        }
+
+        [HttpGet("field/{fieldId}/options/single_select")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFieldSingleSelectOptions([FromRoute, Required] int fieldId)
+        {
+            // TODO! Check that the field belongs to a allowed table
+
+            var field = await _dbContext.Fields.FindAsync(fieldId);
+            if (field is null)
+            {
+                return BadRequest($"Field {fieldId} does not exist");
+            }
+
+            if (field.Type != Models.DataGridValueType.SingleSelect)
+            {
+                return BadRequest($"Single select options queried for field of type {field.Type}");
+            }
+
+            return Ok(_dbContext.SingleSelectOptions.Where(option => option.FieldId == fieldId));
+        }
+
+        [HttpGet("field/{fieldId}/options/multi_select")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetFieldMultiSelectOptions([FromRoute, Required] int fieldId)
+        {
+            // TODO! Check that the field belongs to an allowed table
+
+            var field = await _dbContext.Fields.FindAsync(fieldId);
+            if (field is null)
+            {
+                return BadRequest($"Field {fieldId} does not exist");
+            }
+
+            if (field.Type != Models.DataGridValueType.MultiSelect)
+            {
+                return BadRequest($"Multi select options queried for field of type {field.Type}");
+            }
+            return Ok(_dbContext.MultiSelectOptions.Where(option => option.FieldId == fieldId));
+        }
+
+        /// <summary>Gets the field ids for a grid</summary>
+        [HttpGet("grid/{gridId}/field_signatures")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetGridFieldSignatures([FromRoute, Required] int gridId)
+        {
+            // TODO! Check that the grid is referenced by a field that belong
+            // to a grid that the user is allowed to access
+
+            if (await _dbContext.Grids.FindAsync(gridId) is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            var signatures = _dbContext.Fields
+                .Where(field => field.GridId == gridId)
+                .Select(field => field.ToDataGridFieldSignature());
+
+            return Ok(signatures);
         }
 
         private bool IsUserAllowedGrid(int gridId)

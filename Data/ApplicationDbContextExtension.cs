@@ -466,7 +466,10 @@ namespace CentaureaTest.Data
         /// <returns>Id of updated/insert value</returns>
         public static async Task<int> InsertValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
         {
-            var existingValue = await dbContext.Values.FindAsync(value.Id);
+            // var existingValue = await dbContext.Values.FindAsync(value.Id);
+            var existingValue = await dbContext.Values
+                .Where(v => v.FieldId == value.FieldId && v.RowIndex == value.RowIndex)
+                .FirstOrDefaultAsync();
 
             if (existingValue is null)
             {
