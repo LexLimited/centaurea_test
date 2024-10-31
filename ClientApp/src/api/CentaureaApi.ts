@@ -119,6 +119,14 @@ export namespace CentaureaApi {
         return authInstance.get<Models.ApplicationUser[]>(`/users`);
     }
 
+    export async function getGridPermissions(gridId: number) {
+        return axiosInstance.get<Models.GridPermission[]>(`/grid/${gridId}/permissions`);
+    }
+
+    export async function addGridPermissions(gridId: number, allowedUser: string[]) {
+        return axiosInstance.put(`/grid/${gridId}/permissions`, allowedUser);
+    }
+
     export async function setGridPermissions(gridId: number, allowedUser: string[]) {
         return axiosInstance.post(`/grid/${gridId}/permissions`, allowedUser);
     }

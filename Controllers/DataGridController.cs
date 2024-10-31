@@ -156,10 +156,6 @@ namespace CentaureaTest.Controllers
         public async Task<IActionResult> UpdateValue([FromQuery] int fieldId, [FromBody] DataGridValueDto valueDto)
         {
             // TODO! Check if the value belongs to an allowed grid
-            // if (!IsUserAllowedGrid(gridId))
-            // {
-            //     return Unauthorized($"You're not allowed the access to grid ${gridId}");
-            // }
 
             try
             {
@@ -211,7 +207,7 @@ namespace CentaureaTest.Controllers
                 ? Ok(valueId) : Problem("Failed to delete a value");
         }
 
-        /// TODO! Unfinished and incorrect, rewrite it
+        /// TODO! Unfinished, rewrite it
         /// <summary>Updates an existing field</summary>
         [HttpPut("grid/{gridId}/field")]
         [AllowAnonymous]
@@ -228,11 +224,10 @@ namespace CentaureaTest.Controllers
                 return BadRequest($"Field {fieldId} does not exist");
             }
 
-            var order = field.Order;
             _dbContext.Fields.Remove(field);
             if (await _dbContext.SaveChangesAsync() != 1)
             {
-                return Problem("Failed to remove the field");   
+                return Problem("Failed to remove a field");   
             }
 
             var fieldSignature = fieldDto.ToDataGridFieldSignature();
@@ -361,13 +356,75 @@ namespace CentaureaTest.Controllers
                 ? Ok(values.Select(value => value.Id)) : Problem("Failed to remove some values");
         }
 
-        /// <summary>Sets permissions for a grid by username</summary>
+        /// <summary>Gets permissions for a grid</summary>
+        [HttpGet("grid/{gridId}/permissions")]
+        public IActionResult GetGridPermission(int gridId)
+        {
+            var permissions = _dbContext.GridPermssions
+                .Where(permission => permission.GridId == gridId)
+                .Select(permission => new GridPermission
+                {
+                    GridId = gridId,
+                    UserName = permission.UserName,
+                });
+
+            return Ok(permissions);
+        }
+
+        /// <summary>Ads permissions for a grid by username</summary>
+        [HttpPut("grid/{gridId}/permissions")]
+        public async Task<IActionResult> AddGridPermission(int gridId, [FromBody, Required] List<string> allowedUsers)
+        {
+            if (await _dbContext.Grids.FindAsync(gridId) is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            // Filter already existing permissions
+            var newAllowedUsers = allowedUsers
+                .Where(
+                    userName => !_dbContext.GridPermssions.Where(permission => permission.UserName == userName).Any()
+                )
+                .ToList();
+
+            var permissions = newAllowedUsers.Select(username => new GridPermission
+            {
+                GridId = gridId,
+                UserName = username,
+            });
+
+            foreach (var permission in permissions)
+            {
+                if (await _userManager.FindByNameAsync(permission.UserName) is null)
+                {
+                    return BadRequest($"User {permission.UserName} does not exist");
+                }
+            }
+
+            await _dbContext.AddRangeAsync(permissions);
+
+            return await _dbContext.SaveChangesAsync() == newAllowedUsers.Count
+                ? Ok(newAllowedUsers) : Problem("Failed to set some users");
+        }
+
+        // TODO! Wrap this in a transaction
+        /// <summary>Resets permissions for a grid by username</summary>
         [HttpPost("grid/{gridId}/permissions")]
         public async Task<IActionResult> SetGridPermission(int gridId, [FromBody, Required] List<string> allowedUsers)
         {
             if (await _dbContext.Grids.FindAsync(gridId) is null)
             {
                 return BadRequest($"Grid {gridId} does not exist");
+            }
+
+            var allGridPermissions = await _dbContext.GridPermssions
+                .Where(permission => permission.GridId == gridId)
+                .ToListAsync();
+
+            _dbContext.RemoveRange(allGridPermissions);
+            if (await _dbContext.SaveChangesAsync() != allGridPermissions.Count)
+            {
+                return Problem("Failed to remove some grid permissions");
             }
 
             var permissions = allowedUsers.Select(username => new GridPermission

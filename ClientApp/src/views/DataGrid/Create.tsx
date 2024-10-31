@@ -1,19 +1,20 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem } from '@mui/material';
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem, Typography } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
+import { deepClone } from '@mui/x-data-grid/internals';
 
 export function Create() {
   const [gridName, setGridName] = useState<string>('');
 
-  const [columns, setColumns] = useState<{ fieldDef: any, colDef: GridColDef }[]>([]); // Stores column definitions
-
-  const [openDialog, setOpenDialog] = useState<boolean>(false); // Manages dialog visibility
+  const [columns, setColumns] = useState<{ fieldDef: any, colDef: GridColDef }[]>([]);
+  
+  const [openDialog, setOpenDialog] = useState<boolean>(false);
   
   const [refOptions, setRefOptions] = useState<number[]>([]);
-
+  
   const [newField, setNewColumn] = useState<{
     name: string,
     type: Models.DataGridValueType,
@@ -22,16 +23,16 @@ export function Create() {
     name: '',
     type: '',
     options: null,
-  }); // Manages new column details
+  });
 
-  React.useEffect(() => {
-    if (newField.type == 'Ref') {
+  useEffect(() => {
+    if (newField.type === 'Ref') {
       CentaureaApi.getGridDescriptors()
-        .then(res => setRefOptions(res.data.map(descriptor => descriptor.id)));
+        .then(res => setRefOptions(res.data.map(descriptor => descriptor.id)))
+        .catch(err => console.error('[Error] fetching ref options:', err));
     }
   }, [newField.type]);
 
-  // Function to map column definitions to DataGrid field signature DTOs
   function createDataGridSignatureFieldDtos(): Models.Dto.DataGridFieldSignatureDto[] {
     return columns.map((column, index) => {
       const { name, type, options } = column.fieldDef;
@@ -43,47 +44,45 @@ export function Create() {
 
       switch (type) {
         case 'Regex':
-          dto.regexPattern = options; // Store the regex pattern
+          dto.regexPattern = options;
           break;
         case 'Ref':
-          dto.referencedGridId = options; // Store the reference grid ID
+          dto.referencedGridId = options;
           break;
         case 'SingleSelect':
         case 'MultiSelect':
-          dto.options = options; // Store options as an array of strings
+          dto.options = options;
           break;
         default:
-          break; // No additional fields for basic types like string, number, email
+          break;
       }
       return dto;
     });
   }
 
-  // Creates DataGrid DTO for preview
   function createDataGridDto(): Models.Dto.DataGridDto {
     return {
       name: gridName,
-      rows: [], // No rows
+      rows: [],
       signature: {
         fields: createDataGridSignatureFieldDtos(),
       }
     };
   }
 
-  // Open the dialog to add a new column
   const handleAddColumnClick = () => setOpenDialog(true);
 
-  // Close the dialog
   const handleCloseDialog = () => {
     setNewColumn({ name: '', type: '', options: null });
     setOpenDialog(false);
   };
 
-  // Handle form submission to add column
   const handleAddColumn = () => {
-    console.log('Adding a field:', newField);
+    const fieldDef = deepClone(newField);
+
     const newColumn: GridColDef = {
-      field: newField.name,
+      field: fieldDef.name,
+      fieldDef: fieldDef,
       headerName: newField.name,
     };
 
@@ -91,7 +90,6 @@ export function Create() {
     handleCloseDialog();
   };
 
-  // Render settings based on column type
   const renderExtraSettings = () => {
     switch (newField.type) {
       case 'Regex':
@@ -106,19 +104,26 @@ export function Create() {
         );
       case 'Ref':
         return (
-          <Select
-            label="Select Reference ID"
-            fullWidth
-            margin="dense"
-            value={newField.options || ""}
-            onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
-          >
-            {refOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </Select>
+          <>
+            <Select
+              label="Select Reference ID"
+              fullWidth
+              margin="dense"
+              value={newField.options || ""}
+              onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
+            >
+              {refOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+            {newField.options && (
+              <Typography variant="body2" color="textSecondary">
+                Selected Reference ID: {newField.options}
+              </Typography>
+            )}
+          </>
         );
       case 'SingleSelect':
       case 'MultiSelect':
@@ -141,7 +146,6 @@ export function Create() {
     }
   };
 
-  // Render grid DTO preview in console
   async function handleCreateClick() {
     const gridDto = createDataGridDto();
 
@@ -158,19 +162,46 @@ export function Create() {
       <Button variant="contained" onClick={handleAddColumnClick}>Add Column</Button>
       <Button variant="contained" onClick={handleCreateClick}>Create</Button>
       <TextField
-        label="Grid Name" // New field for grid name
+        label="Grid Name"
         fullWidth
         margin="dense"
         value={gridName}
-        onChange={(e) => setGridName(e.target.value)} // Update grid name state
+        onChange={(e) => setGridName(e.target.value)}
       />
       <DataGrid
         columns={columns.map(c => c.colDef)}
-        rows={[]} // No rows
-        autoHeight
+        rows={[]}
+        slots={{
+          columnMenu: (props) => {
+            const fieldDef = props.colDef.fieldDef;
+
+            if (fieldDef.type == 'Ref') {
+              return (
+                <div>
+                  <label>ref. grid id</label><br/>
+                  <label>{fielddef.options}</label>
+                </div>
+              );
+            }
+
+            if (fieldDef.type == 'SingleSelect') {
+              return (
+                <div>
+                  <label>Option ids:</label><br/>
+                  {
+                    fieldDef.options.map()
+                  }
+                </div>
+              );
+            }
+
+            return (
+              <div>Value: {fieldDef.options}</div>
+            )
+          }
+        }}
       />
 
-      {/* Dialog for adding new column */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>Add New Column</DialogTitle>
         <DialogContent>

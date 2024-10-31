@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Checkbox,
     ListItemText,
@@ -13,16 +13,19 @@ import { CentaureaApi } from '@/api/CentaureaApi';
 export const UserPermissionSelector = ({ gridId }: { gridId: number }) => {
     const [options, setOptions] = React.useState<string[]>([]);
 
+    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+
     React.useEffect(() => {
         const fetchAndSetOptions = async () => {
-            console.log('users:', await CentaureaApi.getUsers());
-            setOptions((await CentaureaApi.getUsers()).data.map(user => user.userName));
+            const options = (await CentaureaApi.getUsers()).data.map(user => user.userName); 
+            const allowed = (await CentaureaApi.getGridPermissions(gridId)).data.map(user => user.userName); 
+
+            setOptions(options);            
+            setSelectedOptions(allowed);
         };
 
         fetchAndSetOptions();
     }, []);
-
-    const [selectedOptions, setSelectedOptions] = useState([]);
 
     const handleToggle = (value) => {
         setSelectedOptions((prev) =>

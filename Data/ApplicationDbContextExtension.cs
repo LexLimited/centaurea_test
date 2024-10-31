@@ -266,6 +266,17 @@ namespace CentaureaTest.Data
                 {
                     await dbContext.DeleteDependentFieldsAsync(grid.Id);
                 }
+
+                // Delete permissions
+                var gridPermissions = await dbContext.GridPermssions
+                    .Where(permission => permission.GridId == gridId)
+                    .ToListAsync();
+
+                dbContext.GridPermssions.RemoveRange(gridPermissions);
+                if (await dbContext.SaveChangesAsync() != gridPermissions.Count)
+                {
+                    throw new Exception("Failed to remove some grid permissions");
+                }
             }
             catch
             {
@@ -628,7 +639,7 @@ namespace CentaureaTest.Data
             }
         }
 
-        /// <summary>Create single and multiselect tables from dto</summary>
+        /// <summary>Create single and multi select tables from dto</summary>
         /// <remarks>
         /// Not transactional<br/>
         /// Throws on error

@@ -11,11 +11,15 @@ export const ProtectedRoute= ({
     reasonDenied?: string,
     requiredAuthority: 'privileged' | 'user' | 'none',
 }) => {
-    const { authStatus } = useContext(AuthContext);
+    const { authStatus, loading } = useContext(AuthContext);
     const location = useLocation();
 
     const returnUrl = encodeURI(location.pathname);
     const reasonDeniedDefault = encodeURIComponent(`You don't have access to the requested page`);
+
+    if (loading) {
+        return <label>loading ...</label>;
+    }
 
     if (requiredAuthority == 'privileged' && !authStatus.isPrivileged) {
         return <Navigate to={`/auth?returnUrl=${returnUrl}&redirectReason=${reasonDenied || reasonDeniedDefault}`} replace />

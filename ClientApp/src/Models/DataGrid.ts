@@ -59,4 +59,9 @@ export namespace Models {
         userId: string,
     };
 
+    export type GridPermission = {
+        gridId: number,
+        userName: string,
+    };
+
 } // Models

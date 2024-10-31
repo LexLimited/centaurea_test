@@ -7,6 +7,7 @@ export type AuthContextValue = {
     logIn: (logInData: CentaureaApi.LogInModel, onLogIn?: () => void) => Promise<AxiosResponse<CentaureaApi.LogInResult, any>>,
     logOut: (onLogOut?: () => any) => any,
     authStatus: CentaureaApi.WhoAmIResult,
+    loading: boolean,
 };
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -17,9 +18,12 @@ export const AuthContext = createContext<AuthContextValue>({
         roles: [],
         isPrivileged: false,
     },
+    loading: true,
 });
 
 export const AuthProvider: React.FC<any> = ({ children }) => {
+    const [loading, setLoading] = React.useState<boolean>(true);
+
     const [authStatus, setAuthStatus] = React.useState<CentaureaApi.WhoAmIResult>({
         username: '',
         roles: [],
@@ -29,7 +33,9 @@ export const AuthProvider: React.FC<any> = ({ children }) => {
     const onAuthStateChangeAction = React.useRef<(() => void) | undefined>(undefined);
 
     React.useEffect(() => {
-        CentaureaApi.whoAmI().then(res => setAuthStatus(res.data));
+        CentaureaApi.whoAmI()
+            .then(res => setAuthStatus(res.data))
+            .finally(() => setLoading(false));
     }, []);
 
     React.useEffect(() => {
@@ -66,6 +72,7 @@ export const AuthProvider: React.FC<any> = ({ children }) => {
         logIn,
         logOut,
         authStatus,
+        loading,
     }}>{children}</AuthContext.Provider>
 }
 
