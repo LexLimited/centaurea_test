@@ -174,22 +174,23 @@ export function Create() {
         slots={{
           columnMenu: (props) => {
             const fieldDef = props.colDef.fieldDef;
+            console.log('fieldDef: ', fieldDef);
 
             if (fieldDef.type == 'Ref') {
               return (
                 <div>
                   <label>ref. grid id</label><br/>
-                  <label>{fielddef.options}</label>
+                  <label>{fieldDef.options}</label>
                 </div>
               );
             }
 
-            if (fieldDef.type == 'SingleSelect') {
+            if (fieldDef.type == 'SingleSelect' || fieldDef.type == 'MultiSelect') {
               return (
                 <div>
-                  <label>Option ids:</label><br/>
+                  <label>Options:</label><br/>
                   {
-                    fieldDef.options.map()
+                    fieldDef.options.map(option => (<div>{option}</div>))
                   }
                 </div>
               );

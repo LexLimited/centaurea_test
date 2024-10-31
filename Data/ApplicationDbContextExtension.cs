@@ -328,7 +328,7 @@ namespace CentaureaTest.Data
                 throw new Exception(message);
             }
 
-            await dbContext.ValidateSpecialValueAsync(value);
+            await dbContext.ValidateSpecialValueAsync(signature, value);
         }
 
         /// <summary>Only used to insert grid dto</summary>
@@ -347,17 +347,23 @@ namespace CentaureaTest.Data
 
         /// <summary>Validates that the reference of a ref value</summary>
         /// <remarks>Throws on validation failure</remarks>
-        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridRefValue value)
+        public static async Task ValidateRefValueAsync(this ApplicationDbContext dbContext, DataGridRefFieldSignature signature, DataGridRefValue value)
         {
-            if (await dbContext.Fields.FindAsync(value.ReferencedFieldId) is null)
+            var field = await dbContext.Fields.FindAsync(value.ReferencedFieldId);
+            if (field is null)
             {
                 throw new Exception($"Field {value.ReferencedFieldId} does not exist");
+            }
+
+            if (field.GridId != signature.ReferencedGridId)
+            {
+                throw new Exception($"Field {value.ReferencedFieldId} exists, but does not belong to the referenced table");
             }
         }
 
         /// <summary>Validate the options of a single select value</summary>
         /// <remarks>Throws on validation failure</remarks>
-        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridSingleSelectValue value)
+        public static async Task ValidateSingleSelectValueAsync(this ApplicationDbContext dbContext, DataGridSingleSelectValue value)
         {
             var option = await dbContext.SingleSelectOptions.FindAsync(value.OptionId)
                 ?? throw new Exception($"Single select option {value.OptionId} does not exist");
@@ -370,7 +376,7 @@ namespace CentaureaTest.Data
 
         /// <summary>Validate the options of a multi select value</summary>
         /// <remarks>Throws on validation failure</remarks>
-        public static async Task ValidateValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
+        public static async Task ValidateMultiSelectValueAsync(this ApplicationDbContext dbContext, DataGridMultiSelectValue value)
         {
             foreach (var optionId in value.OptionIds)
             {
@@ -385,20 +391,20 @@ namespace CentaureaTest.Data
         }
 
         /// <summary>Check if the value if special (ref, select) and if so, validates it</summary>
-        public static async Task ValidateSpecialValueAsync(this ApplicationDbContext dbContext, DataGridValue value)
+        public static async Task ValidateSpecialValueAsync(this ApplicationDbContext dbContext, DataGridFieldSignature signature, DataGridValue value)
         {
             switch (value)
             {
                 case DataGridRefValue refValue:
-                    await dbContext.ValidateValueAsync(refValue);
+                    await dbContext.ValidateRefValueAsync((DataGridRefFieldSignature)signature, refValue);
                     break;
                 
                 case DataGridSingleSelectValue singleSelectValue:
-                    await dbContext.ValidateValueAsync(singleSelectValue);
+                    await dbContext.ValidateSingleSelectValueAsync(singleSelectValue);
                     break;
 
                 case DataGridMultiSelectValue multiSelectValue:
-                    await dbContext.ValidateValueAsync(multiSelectValue);
+                    await dbContext.ValidateMultiSelectValueAsync(multiSelectValue);
                     break;
             }
         }
