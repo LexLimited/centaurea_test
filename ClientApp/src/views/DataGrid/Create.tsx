@@ -4,25 +4,29 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem, Typography } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
-import { deepClone } from '@mui/x-data-grid/internals';
+import { deepClone, gridColumnsTotalWidthSelector } from '@mui/x-data-grid/internals';
+
+type FieldDef = {
+  idx: number,
+  name: string,
+  type: Models.DataGridValueType,
+  options?: string,
+};
 
 export function Create() {
   const [gridName, setGridName] = useState<string>('');
 
-  const [columns, setColumns] = useState<{ fieldDef: any, colDef: GridColDef }[]>([]);
-  
+  const [columns, setColumns] = useState<{ fieldDef: FieldDef, colDef: GridColDef }[]>([]);
+
   const [openDialog, setOpenDialog] = useState<boolean>(false);
-  
+
   const [refOptions, setRefOptions] = useState<number[]>([]);
-  
-  const [newField, setNewColumn] = useState<{
-    name: string,
-    type: Models.DataGridValueType,
-    options: any,
-  }>({
+
+  const [newField, setNewColumn] = useState<FieldDef>({
+    idx: 0,
     name: '',
     type: '',
-    options: null,
+    options: undefined,
   });
 
   useEffect(() => {
@@ -73,22 +77,40 @@ export function Create() {
   const handleAddColumnClick = () => setOpenDialog(true);
 
   const handleCloseDialog = () => {
-    setNewColumn({ name: '', type: '', options: null });
+    setNewColumn({ name: '', type: '', options: undefined });
     setOpenDialog(false);
   };
 
   const handleAddColumn = () => {
     const fieldDef = deepClone(newField);
 
+    const maxIdx = Math.max(...columns.map(c => c.fieldDef.idx));
+    newField.idx = maxIdx + 1;
+
     const newColumn: GridColDef = {
-      field: fieldDef.name,
-      fieldDef: fieldDef,
+      field: fieldDef.idx,
+      fieldDef,
       headerName: newField.name,
+      sortable: false,
     };
 
     setColumns([...columns, { fieldDef: newField, colDef: newColumn }]);
+
     handleCloseDialog();
   };
+
+  const removeColumnByIdx = (idx: number) => {
+    const index = columns.findIndex(c => c.idx);
+    if (index < 0) {
+      console.log('Trying to remove a column that does not exist');
+      return;
+    }
+
+    const newColumns = [...columns];
+    newColumns.splice(index, 1);
+
+    setColumns([...columns]);
+  }
 
   const renderExtraSettings = () => {
     switch (newField.type) {
@@ -166,6 +188,7 @@ export function Create() {
         fullWidth
         margin="dense"
         value={gridName}
+        required
         onChange={(e) => setGridName(e.target.value)}
       />
       <DataGrid
@@ -173,32 +196,16 @@ export function Create() {
         rows={[]}
         slots={{
           columnMenu: (props) => {
-            const fieldDef = props.colDef.fieldDef;
-            console.log('fieldDef: ', fieldDef);
-
-            if (fieldDef.type == 'Ref') {
-              return (
-                <div>
-                  <label>ref. grid id</label><br/>
-                  <label>{fieldDef.options}</label>
-                </div>
-              );
-            }
-
-            if (fieldDef.type == 'SingleSelect' || fieldDef.type == 'MultiSelect') {
-              return (
-                <div>
-                  <label>Options:</label><br/>
-                  {
-                    fieldDef.options.map(option => (<div>{option}</div>))
-                  }
-                </div>
-              );
-            }
+            console.log(props);
+            const onDeleteClick = () => removeColumnByIdx(props.colDef.fieldDef.idx);
+            const onRenameClick = () => { };
 
             return (
-              <div>Value: {fieldDef.options}</div>
-            )
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <Button onClick={onDeleteClick}>Delete</Button>
+                <Button onClick={onRenameClick}>Rename</Button>
+              </div>
+            );
           }
         }}
       />
@@ -209,6 +216,7 @@ export function Create() {
           <TextField
             label="Column Name"
             fullWidth
+            required
             margin="dense"
             value={newField.name}
             onChange={(e) => setNewColumn({ ...newField, name: e.target.value })}
