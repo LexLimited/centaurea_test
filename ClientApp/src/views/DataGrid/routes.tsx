@@ -3,6 +3,7 @@ import { Index } from "./Index";
 import { Create } from "./Create";
 import { Edit } from "./Edit";
 import { ProtectedRoute } from "@/ProtectedRoute";
+import { GridList } from "./GridList";
 
 export const DataGridRoutes = [
     {
@@ -22,6 +23,14 @@ export const DataGridRoutes = [
                 element: <Edit />
             }
         ]
+    },
+    {
+        path: "datagridlist",
+        element: (
+            <ProtectedRoute requiredAuthority='user' reasonDenied="Requested page requires authentication">
+                <GridList />
+            </ProtectedRoute>
+        ),
     },
     {
         path: "datagridedit",

@@ -90,6 +90,10 @@ export namespace CentaureaApi {
         return axiosInstance.put<string>(`/field/${fieldId}/rename?newName=${newName}`);
     }
 
+    export async function renameGrid(gridId: number, newName: string) {
+        return axiosInstance.put(`/grid/${gridId}/rename?newName=${newName}`);
+    }
+
     export async function deleteField(fieldId: number) {
         return axiosInstance.delete<number>(`/field/${fieldId}`);
     }

@@ -1,12 +1,14 @@
 import * as React from 'react';
 import { DataGrid, GridColDef, GridCellEditStopParams, GridValidRowModel, GridColumnMenuProps, ColumnMenuPropsOverrides, useGridApiRef, useGridApiContext, GridCellParams, selectedGridRowsCountSelector } from '@mui/x-data-grid';
-import { Button, Checkbox, Grid, List, ListItem, ListItemText } from '@mui/material';
+import { Button, Checkbox, Grid, List, ListItem, ListItemText, Typography } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
 import { NewFieldNameInput } from './NewFieldNameInput';
 import { UserPermissionSelector } from './UserPermissionSelector';
 import { AuthContext } from '@/context/AuthContext';
 import { DataGridCell, fieldClassNames, MenuItem, Select } from '@fluentui/react-components';
+import { CButton } from '@/components/CButton';
+import { useNavigate } from 'react-router-dom';
 
 function GridContainer({ children, style }: any) {
     return (
@@ -22,42 +24,6 @@ enum Stage {
     Exception,
 };
 
-function GridsList({
-    gridDescriptors,
-    onSelect,
-}: {
-    gridDescriptors: Models.Dto.DataGridDescriptor[],
-    onSelect?: (gridId: number) => void,
-}) {
-    const [selectedId, setSelectedId] = React.useState<number | undefined>();
-
-    if (!gridDescriptors.length) {
-        return (
-            <GridContainer>No grids found</GridContainer>
-        )
-    }
-
-    const options = gridDescriptors.map(descriptor => (
-        <CButton
-            key={descriptor.id}
-            disabled={selectedId == descriptor.id}
-            onClick={() => {
-                setSelectedId(descriptor.id);
-                onSelect?.(descriptor.id)
-            }}
-            style={{ width: 175 }}
-        >
-            {JSON.stringify(descriptor.name)}
-        </CButton>
-    ));
-
-    return (
-        <GridContainer>
-            <div style={{ padding: 10, width: 100, display: 'flex', flexDirection: 'column' }}>{options}</div>
-        </GridContainer>
-    )
-}
-
 function ExceptionView({ details }: { details: string }) {
     return (
         <GridContainer>
@@ -65,10 +31,6 @@ function ExceptionView({ details }: { details: string }) {
             <p>Details: '{details}'</p>
         </GridContainer>
     )
-}
-
-const CButton = ({children, style, ...props}: any) => {
-    return <Button style={{padding: 10, margin: 5, ...style}} {...props}>{children}</Button>
 }
 
 interface CentaureaGridRowModel extends GridValidRowModel {
@@ -211,16 +173,14 @@ function GridView({
     gridDto,
     
     // TODO! Get rid of these
-    gridName,
     dtoFields,
     dtoRows,
 }: {
     gridDto: Models.Dto.DataGridDto,
-    gridName?: string,
     dtoFields: Models.Dto.DataGridDto['signature']['fields'],
     dtoRows: Models.Dto.DataGridDto['rows'],
 }) {
-    const apiRef = useGridApiRef();
+    // const apiRef = useGridApiRef();
 
     const { authStatus } = React.useContext(AuthContext);
 
@@ -455,9 +415,11 @@ function GridView({
         const onDeleteClick = () => {
             console.log('OnDeleteField clicked: props: ', props);
 
-            // TODO! Stop reloading the window
-            CentaureaApi.deleteField(FIELD_ID)
-                .then(() => window.location.reload());
+            if (confirm('Are you sure you want to delete this column?')) {
+                // TODO! Stop reloading the window
+                CentaureaApi.deleteField(FIELD_ID)
+                    .then(() => window.location.reload());
+            }
         };
 
         const onRenameClick = () => {
@@ -513,9 +475,24 @@ function GridView({
         }
     };
 
+    const handleRenameGridClick = () => {
+        const newName = window.prompt('Enter new name for this grid:');
+        if (newName) {
+            CentaureaApi.renameGrid(gridDto.id!, newName)
+                .then(() => window.location.reload());
+        }
+    };
+
     return (
         <GridContainer>
-            { gridName ? <h1>Grid name: {gridName}</h1> : null }
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: 16, marginBottom: 16 }}>
+                <Typography variant="h5" component="h1" style={{ marginRight: 16 }}>
+                    Grid name: {gridDto.name}
+                </Typography>
+                <Button variant="contained" color="primary" onClick={handleRenameGridClick}>
+                    Rename
+                </Button>
+            </div>
             <DataGrid
                 onColumnHeaderClick={(props) => {
                 }}
@@ -658,8 +635,6 @@ function GridView({
 }
 
 export function Edit() {
-    const [gridDescriptors, setGridDescriptors] = React.useState<Models.Dto.DataGridDescriptor[]>([]);
-
     const [exceptionDetails, setExceptionDetails] = React.useState<string>('');
 
     const [stage, setStage] = React.useState<Stage>(Stage.SelectingGrid);
@@ -670,22 +645,17 @@ export function Edit() {
 
     const [dtoFields, setDtoFields] = React.useState<Models.Dto.DataGridDto['signature']['fields']>([]);
 
+    const navigate = useNavigate();
+
+    const queryParams = new URLSearchParams(location.search);
+    const currentGridQueryParam = queryParams.get('gridId');
+
     function setExceptionStage(e: any) {
         setExceptionDetails(`${e}`);
         setStage(Stage.Exception);
     }
 
-    async function fetchGridDescriptors() {
-        try {
-            setGridDescriptors((await CentaureaApi.getGridDescriptors()).data);
-            setStage(Stage.SelectingGrid);
-        } catch (e) {
-            console.error(`Failed to fetch grid descriptors: ${e}`);
-            setExceptionStage(e);
-        }
-    }
-
-    async function fetchGridDto(gridId: number) {
+    async function fetchGridDto(gridId: number, onFail?: () => void) {
         console.log(`Fetching grid dto for gridId ${gridId}`);
 
         try {
@@ -698,21 +668,24 @@ export function Edit() {
         } catch (e) {
             console.error(`Failed to fetch grid dto: ${e}`);
             setExceptionStage(e);
+
+            onFail?.();
         }
     }
 
-    React.useEffect(() => {
-        fetchGridDescriptors();
-    }, []);
-
-    if (stage == Stage.SelectingGrid) {
-        return (
-            <GridsList
-                gridDescriptors={gridDescriptors}
-                onSelect={fetchGridDto}
-            />
-        )
+    const fetchGridFailureAlert = () => {
+        window.confirm(`Grid not found`);
+        navigate("/datagridlist");
     }
+
+    React.useEffect(() => {
+        if (currentGridQueryParam == null) {
+            fetchGridFailureAlert();
+        }
+
+        const gridId = Number.parseInt(currentGridQueryParam!);
+        fetchGridDto(gridId, fetchGridFailureAlert);
+    }, []);
 
     if (stage == Stage.Exception) {
         return <ExceptionView details={exceptionDetails} />

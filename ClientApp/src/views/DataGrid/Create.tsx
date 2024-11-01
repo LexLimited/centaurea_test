@@ -5,6 +5,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, S
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
 import { deepClone, gridColumnsTotalWidthSelector } from '@mui/x-data-grid/internals';
+import { useNavigate } from 'react-router-dom';
 
 type FieldDef = {
   idx: number,
@@ -28,6 +29,8 @@ export function Create() {
     type: '',
     options: undefined,
   });
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (newField.type === 'Ref') {
@@ -84,11 +87,11 @@ export function Create() {
   const handleAddColumn = () => {
     const fieldDef = deepClone(newField);
 
-    const maxIdx = Math.max(...columns.map(c => c.fieldDef.idx));
+    const maxIdx = Math.max(...columns.map(c => c.colDef.fieldDef.idx));
     newField.idx = maxIdx + 1;
 
     const newColumn: GridColDef = {
-      field: fieldDef.idx,
+      field: newField.idx,
       fieldDef,
       headerName: newField.name,
       sortable: false,
@@ -100,7 +103,9 @@ export function Create() {
   };
 
   const removeColumnByIdx = (idx: number) => {
-    const index = columns.findIndex(c => c.idx);
+    console.log('Removing column:', idx);
+
+    const index = columns.findIndex(c => c.colDef.fieldDef.idx == idx);
     if (index < 0) {
       console.log('Trying to remove a column that does not exist');
       return;
@@ -109,7 +114,7 @@ export function Create() {
     const newColumns = [...columns];
     newColumns.splice(index, 1);
 
-    setColumns([...columns]);
+    setColumns([...newColumns]);
   }
 
   const renderExtraSettings = () => {
@@ -172,10 +177,15 @@ export function Create() {
     const gridDto = createDataGridDto();
 
     CentaureaApi.createGrid(gridDto)
-      .then(console.log)
+      .then(res => {
+        if (!res || res.status != 200) {
+          alert(`Failed to create grid: ${res?.data || ""}`);
+        } else {
+          navigate('/datagridlist');
+        }
+      })
       .catch(err => {
-        console.error('[Error] creation failed:', err);
-        console.log('[Info] the following json failed:', JSON.stringify(gridDto));
+        alert(`Failed to create grid: ${err}`);
       });
   }
 

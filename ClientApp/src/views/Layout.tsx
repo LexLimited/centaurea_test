@@ -48,7 +48,7 @@ const NavigationList = () => {
         <div>
             <Link style={{ padding: 10 }} to="/auth">Login</Link>
             <Link style={{ padding: 10 }} to="/datagridcreate">Create</Link>
-            <Link style={{ padding: 10 }} to="/datagridedit">Edit</Link>
+            <Link style={{ padding: 10 }} to="/datagridlist">Grids</Link>
         </div>
     );
 };
