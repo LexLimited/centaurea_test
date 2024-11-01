@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { DataGrid, GridColDef, GridCellEditStopParams, GridValidRowModel, GridColumnMenuProps, ColumnMenuPropsOverrides, useGridApiRef, useGridApiContext, GridCellParams, selectedGridRowsCountSelector } from '@mui/x-data-grid';
-import { Button, Checkbox, Grid, List, ListItem, ListItemText, Typography } from '@mui/material';
+import { Button, Checkbox, Dialog, DialogActions, DialogContent, Grid, List, ListItem, ListItemText, Typography } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
 import { NewFieldNameInput } from './NewFieldNameInput';
 import { UserPermissionSelector } from './UserPermissionSelector';
 import { AuthContext } from '@/context/AuthContext';
-import { DataGridCell, fieldClassNames, MenuItem, Select } from '@fluentui/react-components';
+import { DataGridCell, DialogTitle, fieldClassNames, MenuItem, Select } from '@fluentui/react-components';
 import { CButton } from '@/components/CButton';
 import { useNavigate } from 'react-router-dom';
 import { CreateFieldDialog } from './CreateFieldDialog';
@@ -319,6 +319,8 @@ function GridView({
 
         const [selectedOptionIds, setSelectedOptionIds] = React.useState<number[]>([]);
 
+        const [open, setOpen] = React.useState(false);
+
         React.useEffect(() => {
             const fetchOptions = () => {
                 CentaureaApi.getFieldMultiSelectOptions(dtoField.id)
@@ -359,25 +361,62 @@ function GridView({
         };
 
         const isOptionIdSelected = (optionId: number) => {
-            return selectedOptionIds.includes(optionId);
+            return selectedOptionIds?.includes(optionId);
+        }
+
+        const renderOptionDialog = () => {
+            return (
+                <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+                    <DialogTitle style={{ padding: 6 }}>
+                        <Typography>
+                            Options
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent dividers>
+                        <List>
+                            {options.map(option => (
+                                <ListItem key={option.id} dense>
+                                    <Checkbox
+                                        checked={isOptionIdSelected(option.id)}
+                                        onChange={() => onOptionClicked(option.id)}
+                                    />
+                                    <label>{option.option}</label>
+                                </ListItem>
+                            ))}
+                        </List>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setOpen(false)} color="secondary">
+                            Cancel
+                        </Button>
+                        <Button onClick={() => { onSubmit(); setOpen(false); }} color="primary">
+                            Submit
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+            );
         }
 
         return (
-            <div style={{ position: 'absolute', overflowY: 'auto', maxHeight: 55 }}>
-                <List sx={{ overflowY: 'auto' }}>
-                    {
-                        options.map(option => {
-                            return (
-                                <ListItem key={option.id}>
-                                    <Checkbox checked={isOptionIdSelected(option.id)} onClick={() => onOptionClicked(option.id)} />
-                                    <label>{option.option}</label>
-                                </ListItem>
-                            );
-                        })
-                    }
-                    <button onClick={onSubmit}>Submit</button>
-                </List>
+            <div>
+                <Button onClick={() => setOpen(true)}>Show</Button>
+                {renderOptionDialog()}
             </div>
+            // <div style={{ position: 'absolute', overflowY: 'auto', maxHeight: 55 }}>
+            //     <List sx={{ overflowY: 'auto' }}>
+            //         {
+            //             options.map(option => {
+            //                 return (
+            //                     <ListItem key={option.id}>
+            //                         <Checkbox checked={isOptionIdSelected(option.id)} onClick={() => onOptionClicked(option.id)} />
+            //                         <label>{option.option}</label>
+            //                     </ListItem>
+            //                 );
+            //             })
+            //         }
+            //         <button onClick={onSubmit}>Submit</button>
+            //     </List>
+            // </div>
         ); 
     }
 
@@ -687,7 +726,7 @@ function GridView({
                     field.order = fieldOrder;
 
                     CentaureaApi.addGridField(gridDto.id!, field)
-                        .then(() => window.location.reload());
+                        //.then(() => window.location.reload());
                 }}
                 onAction={() => setCreateFieldDialogOpen(false)}
             />

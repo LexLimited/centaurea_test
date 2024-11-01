@@ -77,8 +77,8 @@ export function CreateFieldDialog({
                         label="Enter Regex Pattern"
                         fullWidth
                         margin="dense"
-                        value={field.options || ""}
-                        onChange={(e) => setField({ ...field, options: e.target.value })}
+                        value={field.regexPattern || ""}
+                        onChange={(e) => setField({ ...field, regexPattern: e.target.value })}
                     />
                 );
             case 'Ref':
@@ -88,8 +88,8 @@ export function CreateFieldDialog({
                             label="Select Reference ID"
                             fullWidth
                             margin="dense"
-                            value={field.options || ""}
-                            onChange={(e) => setField({ ...field, options: e.target.value })}
+                            value={field.referencedGridId || ""}
+                            onChange={(e) => setField({ ...field, referencedGridId: Number.parseInt(e.target.value) })}
                         >
                             {refOptions.map((option) => (
                                 <MenuItem key={option.id} value={option.id}>
@@ -107,12 +107,14 @@ export function CreateFieldDialog({
                         fullWidth
                         margin="dense"
                         value={field.options || ""}
-                        onChange={(e) =>
-                            setField({
+                        onChange={(e) => {
+                            const newField = {
                                 ...field,
                                 options: e.target.value.split(',').map((val) => val.trim()),
-                            })
-                        }
+                            };
+                            console.log('new field value:', newField);
+                            setField(newField);
+                        }}
                     />
                 );
             default:

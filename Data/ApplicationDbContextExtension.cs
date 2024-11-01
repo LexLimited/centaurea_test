@@ -655,6 +655,10 @@ namespace CentaureaTest.Data
             return gridsTable.Id;
         }
 
+        // public static async Task AddFieldAsync(this ApplicationDbContext dbContext, DataGridFieldSignature signature)
+        // {
+        // }
+
         public static async Task AddFieldToGridAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignature fieldSignature)
         {
             var grid = await dbContext.Grids.FindAsync(gridId);
@@ -721,6 +725,14 @@ namespace CentaureaTest.Data
                 await dbContext.ValidateGridExistsAsync(refField.GridId);
             }
         }
+
+        /// <summary>
+        /// Creates fields tables and single / multi select opton
+        /// </summary>
+        // public static async Task CreateFieldTablesWithDependencies(this ApplicationDbContext dbContext, IEnumerable<DataGridFieldSignature> fieldSignatures)
+        // {
+
+        // }
 
         /// <summary>Inserts grids, fields, options and values base on the dto</summary>
         /// <remarks>Throws on failure</remarks>
