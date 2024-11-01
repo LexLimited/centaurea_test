@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.Xml;
+using System.Threading.Tasks.Dataflow;
 using centaureatest.Migrations.AuthDb;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
@@ -361,16 +362,27 @@ namespace CentaureaTest.Data
         /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateRefValueAsync(this ApplicationDbContext dbContext, DataGridRefFieldSignature signature, DataGridRefValue value)
         {
-            var field = await dbContext.Fields.FindAsync(value.ReferencedRowIndex);
-            if (field is null)
+            var grid = await dbContext.Grids.FindAsync(signature.ReferencedGridId);
+            if (grid is null)
             {
-                throw new Exception($"Field {value.ReferencedRowIndex} does not exist");
+                throw new Exception($"Grid {grid.Id} does not exist");
             }
 
-            if (field.GridId != signature.ReferencedGridId)
+            if (!dbContext.GetGridRow(grid.Id, value.ReferencedRowIndex).Any())
             {
-                throw new Exception($"Field {value.ReferencedRowIndex} exists, but does not belong to the referenced table");
+                throw new Exception($"Row index {value.ReferencedRowIndex} does not exist in grid {grid.Id}");
             }
+
+            // var field = await dbContext.Fields.FindAsync(value.ReferencedRowIndex);
+            // if (field is null)
+            // {
+            //     throw new Exception($"Field {value.ReferencedRowIndex} does not exist");
+            // }
+
+            // if (field.GridId != signature.ReferencedGridId)
+            // {
+            //     throw new Exception($"Field {value.ReferencedRowIndex} exists, but does not belong to the referenced table");
+            // }
         }
 
         /// <summary>Validate the options of a single select value</summary>
@@ -501,9 +513,10 @@ namespace CentaureaTest.Data
                 {
                     await dbContext.UpdateValueAsync(value);
                 }
-                catch (Exception e)
+                catch
                 {
-                    throw new Exception("InsertValue tried to update an existing value and failed", e);
+                    throw;
+                    // throw new Exception("InsertValue tried to update an existing value and failed", e);
                 }
 
                 return existingValue.Id;

@@ -8,8 +8,8 @@ namespace CentaureaTest.Models.Auth
     public sealed class GridPermission
     {
         [Key]
+        public int PermissionId { get; set; } 
         public int GridId { get; set; }
-
         public string UserName { get; set; }
     }
 

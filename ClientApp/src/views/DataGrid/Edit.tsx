@@ -192,15 +192,14 @@ function GridView({
     }
 
     function renderRefCellFromDto(dtoField: Models.Dto.DataGridFieldSignatureDto, props: GridCellParams) {
-        const [options, setOptions] = React.useState<Models.Dto.DataGridSignatureDto['fields']>([]);
+        const [options, setOptions] = React.useState<{[rowId: number]: Models.Dto.DataGridValueDto[]}>({});
+
         const [selectedOption, setSelectedOption] = React.useState<string>();
 
         React.useEffect(() => {
             const fetchOptions = () => {
-                CentaureaApi.getGridFieldSignatures(dtoField.referencedGridId)
-                    .then(res => {
-                        setOptions(res.data);
-                    })
+                CentaureaApi.getGridRows(dtoField.referencedGridId)
+                    .then(res => setOptions(res.data));
             };
 
             const getRowDtoId = (row: Models.Dto.DataGridRowDto): number | undefined => {
@@ -213,6 +212,25 @@ function GridView({
             fetchOptions();
             setSelectedOption(dtoValue?.referencedRowIndex);
         }, []);
+
+        // const getDisplayString = (rowIndex: number) => {
+        //     const rowValues = options[rowIndex];
+        //     const firstValue = rowValues?.[0];
+        //     if (!firstValue) {
+        //         return '[Empty row]';
+        //     }
+
+        //     const fieldDto = dtoFields.find(f => f.id == firstValue.fieldId);
+        //     if (!fieldDto) {
+        //         return JSON.stringify(rowValues);
+        //     }
+
+        //     if (fieldDto.name.trim().toLowerCase() == 'name') {
+        //         firstValue.stringValue || JSON.stringify(rowValues);
+        //     }
+
+        //     return JSON.stringify(rowValues);
+        // };
 
         return (
             <select
@@ -227,9 +245,13 @@ function GridView({
                 }}
             >
                 {
-                    options.map(option => (
-                        <option value={option.id} key={option.id}>
-                            {option.name}
+                    <option value={'emptyoption'} id={'emptyoption'}></option>
+                }
+                {
+                    Object.entries(options).map(([rowIndex, option]) => (
+                        <option value={rowIndex} key={rowIndex}>
+                            {JSON.stringify(option)}
+                            {/* { getDisplayString(Number.parseInt(rowIndex)) } */}
                         </option>
                     ))
                 }
@@ -266,6 +288,10 @@ function GridView({
             <select
                 value={selectedOption}
                 onChange={(e) => {
+                    if (e.target.value == 'noselected') {
+                        return;
+                    }
+
                     CentaureaApi.postValue(createValueDto(dtoField.id, 'SingleSelect', e.target.value), {
                         fieldId: dtoField.id,
                         rowIndex: props.row.id,
@@ -274,6 +300,9 @@ function GridView({
                 }}
                 style={{ width: '100%' }}
             >
+                {
+                    <option value="notselected" key="notselected"></option>
+                }
                 {
                     options.map(option => (
                         <option value={option.id} key={option.id}>
@@ -296,6 +325,18 @@ function GridView({
                     .then(res => setOptions(res.data));
             };
 
+            const getRowDtoId = (row: Models.Dto.DataGridRowDto): number | undefined => {
+                return row.items[0]?.rowIndex;
+            }
+
+            const dtoRow = gridDto.rows.find(row => getRowDtoId(row) == props.id)?.items;
+            const dtoValue = dtoRow?.find(value => value.fieldId == dtoField.id);
+
+            console.log('dtoRow:', dtoRow);
+            console.log('dtoValue:', dtoValue);
+
+            setSelectedOptionIds(dtoValue?.optionIds); 
+
             fetchOptions();
         }, []);
 
@@ -317,21 +358,25 @@ function GridView({
             }); //.then(() => window.location.reload());
         };
 
+        const isOptionIdSelected = (optionId: number) => {
+            return selectedOptionIds.includes(optionId);
+        }
+
         return (
             <div style={{ position: 'absolute', overflowY: 'auto', maxHeight: 55 }}>
-            <List sx={{  overflowY: 'auto' }}>
-                {
-                    options.map(option => {
-                        return (
-                            <ListItem>
-                                <Checkbox value={selectedOptionIds.includes(option.id)} onClick={() => onOptionClicked(option.id)}/>
-                                <label>{option.option}</label>
-                            </ListItem>
-                        );
-                    })
-                }
-                <button onClick={onSubmit}>Submit</button>
-            </List>
+                <List sx={{ overflowY: 'auto' }}>
+                    {
+                        options.map(option => {
+                            return (
+                                <ListItem key={option.id}>
+                                    <Checkbox checked={isOptionIdSelected(option.id)} onClick={() => onOptionClicked(option.id)} />
+                                    <label>{option.option}</label>
+                                </ListItem>
+                            );
+                        })
+                    }
+                    <button onClick={onSubmit}>Submit</button>
+                </List>
             </div>
         ); 
     }
@@ -611,7 +656,13 @@ function GridView({
                     )
                     : null
             }
-            <CButton onClick={() => { setRows([...rows, { id: (calculateMaxRowIndex() || 0) + 1 }]) }}>
+            <CButton
+                onClick={() => {
+                    if (confirm('Add a new row?')) {
+                        setRows([...rows, { id: (calculateMaxRowIndex() || 0) + 1 }])
+                    }
+                }}
+            >
                 Add New Row
             </CButton>
             {

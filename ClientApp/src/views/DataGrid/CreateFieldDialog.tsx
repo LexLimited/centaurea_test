@@ -59,12 +59,12 @@ export function CreateFieldDialog({
         type: '' as never,
     });
 
-    const [refOptions, setRefOptions] = React.useState<number[]>([]);
+    const [refOptions, setRefOptions] = React.useState<Models.Dto.DataGridDescriptor[]>([]);
 
     React.useEffect(() => {
         if (field.type === 'Ref') {
             CentaureaApi.getGridDescriptors()
-                .then(res => setRefOptions(res.data.map(descriptor => descriptor.id)))
+                .then(res => setRefOptions(res.data))
                 .catch(err => console.error('[Error] fetching ref options:', err));
         }
     }, [field.type]);
@@ -92,8 +92,8 @@ export function CreateFieldDialog({
                             onChange={(e) => setField({ ...field, options: e.target.value })}
                         >
                             {refOptions.map((option) => (
-                                <MenuItem key={option} value={option}>
-                                    {option}
+                                <MenuItem key={option.id} value={option.id}>
+                                    {option.name} ({option.id})
                                 </MenuItem>
                             ))}
                         </Select>

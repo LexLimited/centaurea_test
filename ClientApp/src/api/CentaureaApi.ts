@@ -59,6 +59,10 @@ export namespace CentaureaApi {
         return axiosInstance.get<Models.Dto.DataGridFieldSignatureDto[]>(`grid/${gridId}/field_signatures`);
     }
 
+    export async function getGridRows(gridId: number) {
+        return axiosInstance.get<{[rowId: number]: Models.Dto.DataGridValueDto[]}>(`grid/${gridId}/rows`);
+    }
+
     export async function createGrid(gridDto: Models.Dto.DataGridDto) {
         return axiosInstance.post('grid', gridDto);
     }

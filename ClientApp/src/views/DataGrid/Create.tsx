@@ -4,8 +4,9 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Select, MenuItem, Typography } from '@mui/material';
 import { Models } from '@/Models/DataGrid';
 import { CentaureaApi } from '@/api/CentaureaApi';
-import { deepClone, gridColumnsTotalWidthSelector } from '@mui/x-data-grid/internals';
+import { deepClone } from '@mui/x-data-grid/internals';
 import { useNavigate } from 'react-router-dom';
+import { CreateFieldDialog } from './CreateFieldDialog';
 
 type FieldDef = {
   idx: number,
@@ -21,7 +22,7 @@ export function Create() {
 
   const [openDialog, setOpenDialog] = useState<boolean>(false);
 
-  const [refOptions, setRefOptions] = useState<number[]>([]);
+  const [refOptions, setRefOptions] = useState<Models.Dto.DataGridDescriptor[]>([]);
 
   const [newField, setNewField] = useState<FieldDef>({
     idx: 0,
@@ -35,7 +36,7 @@ export function Create() {
   useEffect(() => {
     if (newField.type === 'Ref') {
       CentaureaApi.getGridDescriptors()
-        .then(res => setRefOptions(res.data.map(descriptor => descriptor.id)))
+        .then(res => setRefOptions(res.data))
         .catch(err => console.error('[Error] fetching ref options:', err));
     }
   }, [newField.type]);
@@ -175,8 +176,8 @@ export function Create() {
               onChange={(e) => setNewField({ ...newField, options: e.target.value })}
             >
               {refOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
+                <MenuItem key={option.id} value={option.id}>
+                  {option.name} ({option.id})
                 </MenuItem>
               ))}
             </Select>
@@ -243,7 +244,22 @@ export function Create() {
           columnMenu: (props) => {
             console.log(props);
             const onDeleteClick = () => removeColumnByIdx(props.colDef.fieldDef.idx);
-            const onRenameClick = () => { };
+            const onRenameClick = () => {
+              const newName = prompt('Enter new name:');
+              const changedColumn = columns.find(c => c.colDef.fieldDef.idx == props.colDef.fieldDef.idx);
+
+              if (newName && changedColumn) {
+                console.log('Column is being changed to', newName);
+
+                changedColumn!.fieldDef.name = newName;
+                changedColumn.colDef.headerName = newName;
+                setColumns([...columns]);
+              }
+            
+              if (!changedColumn) {
+                console.error('Changed column not found');
+              }
+            };
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column' }}>

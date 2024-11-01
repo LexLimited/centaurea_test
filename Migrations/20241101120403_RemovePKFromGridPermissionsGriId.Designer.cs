@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using CentaureaTest.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace centaureatest.Migrations
+namespace centaureatest.Migrations.ApplicationDb
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241101120403_RemovePKFromGridPermissionsGriId")]
+    partial class RemovePKFromGridPermissionsGriId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -25,20 +28,12 @@ namespace centaureatest.Migrations
 
             modelBuilder.Entity("CentaureaTest.Models.Auth.GridPermission", b =>
                 {
-                    b.Property<int>("PermissionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PermissionId"));
-
                     b.Property<int>("GridId")
                         .HasColumnType("integer");
 
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.HasKey("PermissionId");
 
                     b.ToTable("GridPermissions");
                 });

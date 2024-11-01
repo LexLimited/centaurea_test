@@ -67,7 +67,14 @@ namespace CentaureaTest.Converters
 
                 case DataGridMultiSelectValue multiSelectValue:
                     writer.WritePropertyName("optionIds");
-                    writer.WriteStringValue(multiSelectValue.OptionIds.ToString());
+                    writer.WriteStartArray();
+                    
+                    foreach (var optionId in multiSelectValue.OptionIds)
+                    {
+                        writer.WriteNumberValue(optionId);
+                    }
+
+                    writer.WriteEndArray();
                     break;
 
                 default: break;

@@ -378,6 +378,11 @@ namespace CentaureaTest.Controllers
             // TODO! Check that the grid is referenced by a field that belong
             // to a grid that the user is allowed to access
 
+            if (await _dbContext.Grids.FindAsync(gridId) is null)
+            {
+                return BadRequest($"Grid {gridId} does not exist");
+            }
+
             return Ok(await _dbContext.GetGridRowDict(gridId));
         }
 
