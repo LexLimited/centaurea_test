@@ -9,6 +9,7 @@ import { AuthContext } from '@/context/AuthContext';
 import { DataGridCell, fieldClassNames, MenuItem, Select } from '@fluentui/react-components';
 import { CButton } from '@/components/CButton';
 import { useNavigate } from 'react-router-dom';
+import { CreateFieldDialog } from './CreateFieldDialog';
 
 function GridContainer({ children, style }: any) {
     return (
@@ -144,21 +145,6 @@ function validateValueDto(dtoValue: Models.Dto.DataGridValueDto, stringifiedValu
     }
 }
 
-function ErrorPanel({
-    message
-}: {
-    message?: string
-}) {
-    return (
-        <div style={{ padding: 10 }}>
-            Errors:
-            <div style={{ padding: 6, marginLeft: 6 }}>
-                { message || 'No errors' }
-            </div>
-        </div>
-    );
-}
-
 function createValueDto(fieldId: number, type: Models.DataGridValueType, stringifiedValue: string) {
     const newValueDto: Models.Dto.DataGridValueDto = {
         fieldId,
@@ -184,22 +170,25 @@ function GridView({
 
     const { authStatus } = React.useContext(AuthContext);
 
-    const [errorMessage, setErrorMessage] = React.useState<string>();
-
     const [rows, setRows] = React.useState<CentaureaGridRowModel[]>(dtoRows.map(mapDtoRowToGridRow));
 
     const [columns, setColumns] = React.useState<GridColDef<CentaureaGridRowModel>[]>(dtoFields.map(mapDtoFieldsToGridColumn));
+
+    const [createFieldDialogOpen, setCreateFieldDialogOpen] = React.useState<boolean>(false);
 
     const editedRowSnapshot = React.useRef<CentaureaGridRowModel>();
 
     const editedColumnId = React.useRef<number>();
 
+    const navigate = useNavigate();
+
     const FIELD_IDS = dtoFields.map(dtoField => dtoField.id);
 
     function deleteGrid() {
-        // TODO! Stop reloading the window
-        CentaureaApi.deleteGrid(gridDto.id!)
-            .then(() => window.location.reload());
+        if (confirm('Are you sure you want to delete this grid?')) {
+            CentaureaApi.deleteGrid(gridDto.id!)
+                .then(() => navigate("/datagridlist"));
+        }
     }
 
     function renderRefCellFromDto(dtoField: Models.Dto.DataGridFieldSignatureDto, props: GridCellParams) {
@@ -208,8 +197,6 @@ function GridView({
 
         React.useEffect(() => {
             const fetchOptions = () => {
-                // CentaureaApi.getGrid(dtoField.referencedGridId!)
-                //     .then(res => setOptions(res.data.signature.fields));
                 CentaureaApi.getGridFieldSignatures(dtoField.referencedGridId)
                     .then(res => {
                         setOptions(res.data);
@@ -224,7 +211,7 @@ function GridView({
             const dtoValue = dtoRow?.find(value => value.fieldId == dtoField.id);
 
             fetchOptions();
-            setSelectedOption(dtoValue?.referencedFieldId);
+            setSelectedOption(dtoValue?.referencedRowIndex);
         }, []);
 
         return (
@@ -483,15 +470,25 @@ function GridView({
         }
     };
 
+    const handleAddNewColumnClick = () => {
+        setCreateFieldDialogOpen(true);
+    };
+
     return (
         <GridContainer>
             <div style={{ display: 'flex', alignItems: 'center', marginTop: 16, marginBottom: 16 }}>
                 <Typography variant="h5" component="h1" style={{ marginRight: 16 }}>
                     Grid name: {gridDto.name}
                 </Typography>
-                <Button variant="contained" color="primary" onClick={handleRenameGridClick}>
-                    Rename
-                </Button>
+                {
+                    authStatus.isPrivileged
+                        ? (
+                            <Button variant="contained" color="primary" onClick={handleRenameGridClick}>
+                                Rename
+                            </Button>
+                        )
+                        : null
+                }
             </div>
             <DataGrid
                 onColumnHeaderClick={(props) => {
@@ -555,7 +552,7 @@ function GridView({
 
                         const validationResult = validateValueDto(valueDto, stringifiedValue, fieldSignature);
                         if (!validationResult.ok) {
-                            setErrorMessage(validationResult.message);
+                            alert(validationResult.message);
                         }
 
                         try {
@@ -574,7 +571,7 @@ function GridView({
                     try {
                         const validationResult = validateValueDto(valueDto, stringifiedValue, fieldSignature);
                         if (!validationResult.ok) {
-                            setErrorMessage(validationResult.message);
+                            alert(validationResult.message);
                         }
 
                         setValueDtoValue(valueDto, stringifiedValue);
@@ -596,7 +593,6 @@ function GridView({
                         };
                     } catch (e) {
                         console.error('Api request failed:', e);
-                        // setErrorMessage(`${e}`);
                     }
 
                     // This will return whatever the user put in
@@ -607,9 +603,13 @@ function GridView({
                 }}
             />
             {
-                // <CButton onClick={() => console.log('TODO! Add new column')}>
-                //     Add New Column
-                // </CButton>
+                authStatus.isPrivileged
+                    ? (
+                        <CButton onClick={handleAddNewColumnClick}>
+                            Add New Column
+                        </CButton>
+                    )
+                    : null
             }
             <CButton onClick={() => { setRows([...rows, { id: (calculateMaxRowIndex() || 0) + 1 }]) }}>
                 Add New Row
@@ -629,7 +629,17 @@ function GridView({
                     )
                     : null
             }
-            <ErrorPanel message={errorMessage}/>
+            <CreateFieldDialog
+                open={createFieldDialogOpen}
+                onSubmit={field => {
+                    const fieldOrder = Math.max(...dtoFields.map(f => f.order)) + 1;
+                    field.order = fieldOrder;
+
+                    CentaureaApi.addGridField(gridDto.id!, field)
+                        .then(() => window.location.reload());
+                }}
+                onAction={() => setCreateFieldDialogOpen(false)}
+            />
         </GridContainer>
     );
 }
@@ -693,11 +703,13 @@ export function Edit() {
 
     if (stage == Stage.GridLoaded) {
         return (
-            <GridView
-                gridDto={gridDto!}
-                dtoRows={dtoRows}
-                dtoFields={dtoFields}
-            />
+            <>
+                <GridView
+                    gridDto={gridDto!}
+                    dtoRows={dtoRows}
+                    dtoFields={dtoFields}
+                />
+            </>
         )
     }
 

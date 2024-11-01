@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.Eventing.Reader;
 using CentaureaTest.Data;
 using CentaureaTest.Models;
 using CentaureaTest.Models.Auth;
@@ -370,6 +369,16 @@ namespace CentaureaTest.Controllers
                 });
 
             return Ok(permissions);
+        }
+
+        [HttpGet("grid/{gridId}/rows")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetGridRows(int gridId)
+        {
+            // TODO! Check that the grid is referenced by a field that belong
+            // to a grid that the user is allowed to access
+
+            return Ok(await _dbContext.GetGridRowDict(gridId));
         }
 
         /// <summary>Ads permissions for a grid by username</summary>

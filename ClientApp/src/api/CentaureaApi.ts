@@ -60,7 +60,11 @@ export namespace CentaureaApi {
     }
 
     export async function createGrid(gridDto: Models.Dto.DataGridDto) {
-        return axiosInstance.post(`grid`, gridDto);
+        return axiosInstance.post('grid', gridDto);
+    }
+
+    export async function addGridField(gridId: number, field: Models.Dto.DataGridFieldSignatureDto) {
+        return axiosInstance.post(`grid/${gridId}/field`, field);
     }
 
     export type CentaureaApiPutValueHandleExtraParams = {

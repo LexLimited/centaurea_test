@@ -56,8 +56,8 @@ namespace CentaureaTest.Converters
                     break;
 
                 case DataGridRefValue refValue:
-                    writer.WritePropertyName("referencedFieldId");
-                    writer.WriteNumberValue(refValue.ReferencedFieldId);
+                    writer.WritePropertyName("referencedRowIndex");
+                    writer.WriteNumberValue(refValue.ReferencedRowIndex);
                     break;
 
                 case DataGridSingleSelectValue singleSelectValue:

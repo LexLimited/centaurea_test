@@ -162,11 +162,11 @@ namespace CentaureaTest.Models
 
     public class DataGridRefValue : DataGridValue
     {
-        public int ReferencedFieldId { get; set; }
+        public int ReferencedRowIndex { get; set; }
 
-        public DataGridRefValue(int referencedFieldId)
+        public DataGridRefValue(int referencedRowIndex)
         {
-            ReferencedFieldId = referencedFieldId;
+            ReferencedRowIndex = referencedRowIndex;
             Type = DataGridValueType.Ref;
         }
 

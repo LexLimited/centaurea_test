@@ -23,7 +23,7 @@ export function Create() {
 
   const [refOptions, setRefOptions] = useState<number[]>([]);
 
-  const [newField, setNewColumn] = useState<FieldDef>({
+  const [newField, setNewField] = useState<FieldDef>({
     idx: 0,
     name: '',
     type: '',
@@ -80,11 +80,46 @@ export function Create() {
   const handleAddColumnClick = () => setOpenDialog(true);
 
   const handleCloseDialog = () => {
-    setNewColumn({ name: '', type: '', options: undefined });
+    setNewField({ name: '', type: '', options: undefined });
     setOpenDialog(false);
   };
 
+  type ValidationResult = {
+    ok: boolean,
+    message?: string,
+  };
+
+  const validateFieldDef = (fieldDef: FieldDef): ValidationResult => {
+    if (fieldDef.name.trim().length == 0) {
+      return {
+        ok: false,
+        message: 'Field name must not be empty or consist of whitespaces only'
+      };
+    }
+
+    if (fieldDef.type as never == '') {
+      return {
+        ok: false,
+        message: 'Select the type for this field',
+      };
+    }
+
+    if (fieldDef.type == 'SingleSelect' || fieldDef.type == 'MultiSelect') {
+      if (fieldDef.options!.some(segment => !segment.length)) {
+        return { ok: false, message: 'Option names cannot be empty' };
+      }
+    }
+
+    return { ok: true };
+  }
+
   const handleAddColumn = () => {
+    const validationResult = validateFieldDef(newField);
+    if (!validationResult.ok) {
+      alert(validationResult.message);
+      return;
+    }
+
     const fieldDef = deepClone(newField);
 
     const maxIdx = Math.max(...columns.map(c => c.colDef.fieldDef.idx));
@@ -126,7 +161,7 @@ export function Create() {
             fullWidth
             margin="dense"
             value={newField.options || ""}
-            onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
+            onChange={(e) => setNewField({ ...newField, options: e.target.value })}
           />
         );
       case 'Ref':
@@ -137,7 +172,7 @@ export function Create() {
               fullWidth
               margin="dense"
               value={newField.options || ""}
-              onChange={(e) => setNewColumn({ ...newField, options: e.target.value })}
+              onChange={(e) => setNewField({ ...newField, options: e.target.value })}
             >
               {refOptions.map((option) => (
                 <MenuItem key={option} value={option}>
@@ -145,11 +180,6 @@ export function Create() {
                 </MenuItem>
               ))}
             </Select>
-            {newField.options && (
-              <Typography variant="body2" color="textSecondary">
-                Selected Reference ID: {newField.options}
-              </Typography>
-            )}
           </>
         );
       case 'SingleSelect':
@@ -161,7 +191,7 @@ export function Create() {
             margin="dense"
             value={newField.options || ""}
             onChange={(e) =>
-              setNewColumn({
+              setNewField({
                 ...newField,
                 options: e.target.value.split(',').map((val) => val.trim()),
               })
@@ -175,6 +205,11 @@ export function Create() {
 
   async function handleCreateClick() {
     const gridDto = createDataGridDto();
+
+    if (!gridDto.name.trim().length) {
+      alert('Grid name should not be empty or consist of whitespaces only');
+      return;
+    }
 
     CentaureaApi.createGrid(gridDto)
       .then(res => {
@@ -229,13 +264,17 @@ export function Create() {
             required
             margin="dense"
             value={newField.name}
-            onChange={(e) => setNewColumn({ ...newField, name: e.target.value })}
+            onChange={(e) => {
+              setNewField({ ...newField, name: e.target.value })
+            }}
           />
           <Select
             fullWidth
             margin="dense"
             value={newField.type}
-            onChange={(e) => setNewColumn({ ...newField, type: e.target.value })}
+            onChange={(e) => {
+              setNewField({ ...newField, type: e.target.value })}
+            }
             displayEmpty
           >
             <MenuItem value="" disabled>Select Type</MenuItem>

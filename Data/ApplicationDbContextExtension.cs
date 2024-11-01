@@ -34,6 +34,18 @@ namespace CentaureaTest.Data
             return dbContext.Values.Where(value => value.RowIndex == rowIndex && fields.Any(field => field.Id == value.FieldId));
         }
 
+        public static async Task<Dictionary<int, List<DataGridValue>>> GetGridRowDict(this ApplicationDbContext dbContext, int gridId)
+        {
+            var fields = dbContext.GetGridFields(gridId);
+            var gridValues = await dbContext.Values
+                .Where(value => fields.Any(field => field.Id == value.FieldId))
+                .ToListAsync();
+
+            return gridValues
+                .GroupBy(value => value.RowIndex)
+                .ToDictionary(group => group.Key, group => group.ToList());
+        }
+
         public static IEnumerable<(int RowIndex, DataGridRow Row)> GetGridRows(this ApplicationDbContext dbContext, int gridId)
         {
             var fieldIds = dbContext.Fields
@@ -179,7 +191,7 @@ namespace CentaureaTest.Data
         {
             var refs = await dbContext.Values
                 .OfType<DataGridRefValue>()
-                .Where(value => value.ReferencedFieldId == fieldId)
+                .Where(value => value.ReferencedRowIndex == fieldId)
                 .ToListAsync();
             
             dbContext.Values.RemoveRange(refs);
@@ -349,15 +361,15 @@ namespace CentaureaTest.Data
         /// <remarks>Throws on validation failure</remarks>
         public static async Task ValidateRefValueAsync(this ApplicationDbContext dbContext, DataGridRefFieldSignature signature, DataGridRefValue value)
         {
-            var field = await dbContext.Fields.FindAsync(value.ReferencedFieldId);
+            var field = await dbContext.Fields.FindAsync(value.ReferencedRowIndex);
             if (field is null)
             {
-                throw new Exception($"Field {value.ReferencedFieldId} does not exist");
+                throw new Exception($"Field {value.ReferencedRowIndex} does not exist");
             }
 
             if (field.GridId != signature.ReferencedGridId)
             {
-                throw new Exception($"Field {value.ReferencedFieldId} exists, but does not belong to the referenced table");
+                throw new Exception($"Field {value.ReferencedRowIndex} exists, but does not belong to the referenced table");
             }
         }
 
@@ -440,7 +452,7 @@ namespace CentaureaTest.Data
                     break;
 
                 case DataGridRefValue castValue:
-                    ((DataGridRefValue)existingValue).ReferencedFieldId = castValue.ReferencedFieldId;
+                    ((DataGridRefValue)existingValue).ReferencedRowIndex = castValue.ReferencedRowIndex;
                     break;
 
                 case DataGridSingleSelectValue castValue:
