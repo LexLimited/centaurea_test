@@ -337,7 +337,9 @@ function GridView({
             console.log('dtoRow:', dtoRow);
             console.log('dtoValue:', dtoValue);
 
-            setSelectedOptionIds(dtoValue?.optionIds); 
+            if (dtoValue) {
+                setSelectedOptionIds(dtoValue.optionIds); 
+            }
 
             fetchOptions();
         }, []);
@@ -354,10 +356,12 @@ function GridView({
         };
 
         const onSubmit = () => {
-            CentaureaApi.postValue(createValueDto(dtoField.id, 'MultiSelect', selectedOptionIds.join(',')), {
-                fieldId: dtoField.id,
-                rowIndex: Number.parseInt(`${props.id}`),
-            }); //.then(() => window.location.reload());
+            if (selectedOptionIds) {
+                CentaureaApi.postValue(createValueDto(dtoField.id, 'MultiSelect', selectedOptionIds.join(',')), {
+                    fieldId: dtoField.id,
+                    rowIndex: Number.parseInt(`${props.id}`),
+                }).then(() => window.location.reload());
+            }
         };
 
         const isOptionIdSelected = (optionId: number) => {

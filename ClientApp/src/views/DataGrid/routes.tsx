@@ -14,14 +14,6 @@ export const DataGridRoutes = [
                 index: true,
                 element: <Edit />,
             },
-            {
-                path: "create",
-                element: <Create />
-            },
-            {
-                path: "edit",
-                element: <Edit />
-            }
         ]
     },
     {
