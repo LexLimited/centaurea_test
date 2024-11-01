@@ -7,6 +7,7 @@ using CentaureaTest.Models;
 using CentaureaTest.Models.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.Internal;
 
 namespace CentaureaTest.Data
 {
@@ -659,7 +660,7 @@ namespace CentaureaTest.Data
         // {
         // }
 
-        public static async Task AddFieldToGridAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignature fieldSignature)
+        public static async Task<int> AddFieldToGridAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignature fieldSignature)
         {
             var grid = await dbContext.Grids.FindAsync(gridId);
             if (grid is null)
@@ -674,6 +675,24 @@ namespace CentaureaTest.Data
             if (nAdded != 1)
             {
                 throw new Exception("Failed to add a field");
+            }
+
+            return fieldsTable.Id;
+        }
+
+        public static async Task AddFieldToGridWithDependenciesAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignatureDto signatureDto)
+        {
+            var fieldId = await dbContext.AddFieldToGridAsync(gridId, signatureDto.ToDataGridFieldSignature());
+            
+            // Insert single / multi select tables
+            if (signatureDto.Type == DataGridValueType.SingleSelect)
+            {
+                await dbContext.CreateSingleSelectOptionsAsync(fieldId, signatureDto.Options ?? throw new Exception("Trying to insert a single select field with null options"));
+            }
+
+            if (signatureDto.Type == DataGridValueType.MultiSelect)
+            {
+                await dbContext.CreateSingleSelectOptionsAsync(fieldId, signatureDto.Options ?? throw new Exception("Trying to insert a multi select field with null options"));
             }
         }
 

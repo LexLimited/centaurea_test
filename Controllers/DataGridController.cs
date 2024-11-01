@@ -140,11 +140,34 @@ namespace CentaureaTest.Controllers
 
             try
             {
-                await _dbContext.AddFieldToGridAsync(gridId, fieldSignature);
+                await _dbContext.AddFieldToGridWithDependenciesAsync(gridId, fieldSignatureDto);
             }
             catch (Exception e)
             {
                 return BadRequest(e.Message);
+            }
+
+            // TODO! Move this logic elsewhere
+            if (fieldSignatureDto.Type == DataGridValueType.SingleSelect)
+            {
+                var options = fieldSignatureDto.Options;
+                if (options is null)
+                {
+                    return BadRequest("Trying to create single select field with null options");
+                }
+
+                await _dbContext.CreateSingleSelectOptionsAsync(gridId, options);
+            }
+
+            if (fieldSignatureDto.Type == DataGridValueType.MultiSelect)
+            {
+                var options = fieldSignatureDto.Options;
+                if (options is null)
+                {
+                    return BadRequest("Trying to create multi select field with null options");
+                }
+
+                await _dbContext.CreateMultiSelectOptionsAsync(gridId, options);
             }
 
             return Ok(fieldSignature);
