@@ -138,9 +138,10 @@ namespace CentaureaTest.Controllers
                 return BadRequest("Invalid field signature");
             }
 
+            int fieldId;
             try
             {
-                await _dbContext.AddFieldToGridWithDependenciesAsync(gridId, fieldSignatureDto);
+                fieldId = await _dbContext.AddFieldToGridAsync(gridId, fieldSignature);
             }
             catch (Exception e)
             {
@@ -156,10 +157,9 @@ namespace CentaureaTest.Controllers
                     return BadRequest("Trying to create single select field with null options");
                 }
 
-                await _dbContext.CreateSingleSelectOptionsAsync(gridId, options);
+                await _dbContext.CreateSingleSelectOptionsAsync(fieldId, options);
             }
-
-            if (fieldSignatureDto.Type == DataGridValueType.MultiSelect)
+            else if (fieldSignatureDto.Type == DataGridValueType.MultiSelect)
             {
                 var options = fieldSignatureDto.Options;
                 if (options is null)
@@ -167,7 +167,7 @@ namespace CentaureaTest.Controllers
                     return BadRequest("Trying to create multi select field with null options");
                 }
 
-                await _dbContext.CreateMultiSelectOptionsAsync(gridId, options);
+                await _dbContext.CreateMultiSelectOptionsAsync(fieldId, options);
             }
 
             return Ok(fieldSignature);

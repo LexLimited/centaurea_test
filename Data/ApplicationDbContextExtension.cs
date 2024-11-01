@@ -680,22 +680,6 @@ namespace CentaureaTest.Data
             return fieldsTable.Id;
         }
 
-        public static async Task AddFieldToGridWithDependenciesAsync(this ApplicationDbContext dbContext, int gridId, DataGridFieldSignatureDto signatureDto)
-        {
-            var fieldId = await dbContext.AddFieldToGridAsync(gridId, signatureDto.ToDataGridFieldSignature());
-            
-            // Insert single / multi select tables
-            if (signatureDto.Type == DataGridValueType.SingleSelect)
-            {
-                await dbContext.CreateSingleSelectOptionsAsync(fieldId, signatureDto.Options ?? throw new Exception("Trying to insert a single select field with null options"));
-            }
-
-            if (signatureDto.Type == DataGridValueType.MultiSelect)
-            {
-                await dbContext.CreateSingleSelectOptionsAsync(fieldId, signatureDto.Options ?? throw new Exception("Trying to insert a multi select field with null options"));
-            }
-        }
-
         /// <summary>Create single and multi select tables from dto</summary>
         /// <remarks>
         /// Not transactional<br/>

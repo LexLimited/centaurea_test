@@ -726,7 +726,7 @@ function GridView({
                     field.order = fieldOrder;
 
                     CentaureaApi.addGridField(gridDto.id!, field)
-                        //.then(() => window.location.reload());
+                        .then(() => window.location.reload());
                 }}
                 onAction={() => setCreateFieldDialogOpen(false)}
             />
